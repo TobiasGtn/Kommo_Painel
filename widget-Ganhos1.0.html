@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Leads Ganhos - Dashboard Widget</title>
+    <title>Negócios Ganhos - Dashboard Widget</title>
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans:400,300&subset=latin,cyrillic-ext">
     <link rel="stylesheet" type="text/css" href='//fonts.googleapis.com/css?family=PT+Sans:400,700&subset=latin,cyrillic-ext'>
 
@@ -16,126 +16,170 @@
     html, body {
         padding: 0;
         margin: 0;
-        font-family: 'PT Sans';
-        color: #2E3640;
-    }
-    a, a:active, a:hover, a:visited {
-        color: #2E3640;
-        text-decoration: none;
-    }
-    .cell-wrapper {
-        padding: 20px 15px 15px 15px;
-    }
-    .cell-wrapper__caption {
-        font-size: 15px;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .cell-wrapper__data {
-        height: auto;
-        margin-bottom: 10px;
-    }
-    .cell-wrapper__data__num {
-        font-size: 40px;
-        line-height: 48px;
-        font-family: 'Open Sans', sans-serif;
-        font-weight: 300;
-    }
-    .cell-wrapper__data__label {
-        font-size: 13px;
-        color: #8b8b8b;
-        margin-top: 5px;
-    }
-    .cell-wrapper__value {
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid #f0f0f0;
-    }
-    .cell-wrapper__value__num {
-        font-size: 28px;
-        line-height: 32px;
-        font-family: 'Open Sans', sans-serif;
-        color: #41cfc4;
-        font-weight: 300;
-    }
-    .cell-wrapper__value__label {
-        font-size: 13px;
-        color: #8b8b8b;
-        margin-top: 5px;
-    }
-    .cell-wrapper__bottom {
-        margin-top: 15px;
-        font-size: 14px;
-        font-family: 'Open Sans', sans-serif;
-        color: #8b8b8b;
-    }
-    .cell-wrapper__bottom.green {
-        color: #41cfc4;
-    }
-    .cell-wrapper__bottom.red {
-        color: #fe6e6e;
+        font-family: 'PT Sans', sans-serif;
+        background-color: #1a3a52;
+        color: #ffffff;
+        height: 100%;
     }
     
-    /* Fade effect for long text */
-    .cell-wrapper__caption,
-    .cell-wrapper__data,
-    .cell-wrapper__value,
-    .cell-wrapper__bottom {
-        position: relative;
-        white-space: nowrap;
-        overflow: hidden;
+    .widget-container {
+        background-color: #1a3a52;
+        height: 100%;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .widget-header {
+        font-size: 13px;
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #ffffff;
+        margin-bottom: 15px;
+        letter-spacing: 0.5px;
+    }
+    
+    .widget-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+    
+    .main-number {
+        font-size: 48px;
+        font-weight: 300;
+        line-height: 1;
+        color: #5ab3ff;
+        font-family: 'Open Sans', sans-serif;
+        margin-bottom: 10px;
+    }
+    
+    .main-value {
+        font-size: 14px;
+        color: #ffffff;
+        margin-bottom: 25px;
+    }
+    
+    .divider {
         width: 100%;
+        height: 1px;
+        background-color: rgba(255, 255, 255, 0.2);
+        margin: 15px 0;
+    }
+    
+    .comparison {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 13px;
+    }
+    
+    .comparison-item {
+        color: #8b9aaa;
+    }
+    
+    .comparison-item.negative {
+        color: #ff6b6b;
+    }
+    
+    .comparison-item.positive {
+        color: #4ecdc4;
     }
     </style>
     
     <script>
-    // Aqui você pode adicionar JavaScript para buscar dados dinamicamente
-    // Por enquanto, vamos usar valores de exemplo
-    
-    // Simulando dados que viriam da API do Kommo
+    // Dados simulados - posteriormente serão substituídos por dados reais da API
     const dados = {
-        leadsGanhos: 23,
+        negociosGanhos: 23,
         valorTotal: 45750.00,
-        comparacaoPeriodo: 15 // percentual de crescimento
+        diferencaNegocios: -8,
+        diferencaValor: 15
     };
     
-    window.onload = function() {
-        // Atualiza os valores quando a página carrega
-        document.getElementById('leads-ganhos').textContent = dados.leadsGanhos;
-        document.getElementById('valor-total').textContent = 'R$ ' + dados.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    // Função para obter o período do parâmetro GET
+    function getPeriodo() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const periodo = urlParams.get('kommo_period');
         
-        // Atualiza a comparação
-        const comparacao = document.getElementById('comparacao');
-        if (dados.comparacaoPeriodo > 0) {
-            comparacao.className = 'cell-wrapper__bottom green';
-            comparacao.textContent = '+' + dados.comparacaoPeriodo + '% vs período anterior';
-        } else if (dados.comparacaoPeriodo < 0) {
-            comparacao.className = 'cell-wrapper__bottom red';
-            comparacao.textContent = dados.comparacaoPeriodo + '% vs período anterior';
+        // Traduz o período para português
+        const periodos = {
+            'day': 'hoje',
+            'week': 'esta semana',
+            'month': 'este mês',
+            'quarter': 'este trimestre',
+            'year': 'este ano'
+        };
+        
+        return periodos[periodo] || 'este período';
+    }
+    
+    window.onload = function() {
+        // Obtém o período selecionado
+        const periodoTexto = getPeriodo();
+        
+        // Atualiza número de negócios
+        document.getElementById('negocios-ganhos').textContent = dados.negociosGanhos;
+        
+        // Atualiza valor total
+        document.getElementById('valor-total').textContent = 'R
+</head>
+<body>
+    <div class="widget-container">
+        <div class="widget-header">NEGÓCIOS GANHOS</div>
+        
+        <div class="widget-content">
+            <div class="main-number" id="negocios-ganhos">23</div>
+            <div class="main-value" id="valor-total">R$45.750</div>
+            
+            <div class="divider"></div>
+            
+            <div class="comparison">
+                <div class="comparison-item negative" id="comp-negocios">-8 esta semana</div>
+                <div class="comparison-item positive" id="comp-valor">+15% esta semana</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> + dados.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0 });
+        
+        // Atualiza comparação de negócios
+        const compNegocios = document.getElementById('comp-negocios');
+        if (dados.diferencaNegocios < 0) {
+            compNegocios.className = 'comparison-item negative';
+            compNegocios.textContent = dados.diferencaNegocios;
+        } else {
+            compNegocios.className = 'comparison-item positive';
+            compNegocios.textContent = '+' + dados.diferencaNegocios;
+        }
+        
+        // Atualiza comparação de valor
+        const compValor = document.getElementById('comp-valor');
+        if (dados.diferencaValor < 0) {
+            compValor.className = 'comparison-item negative';
+            compValor.textContent = dados.diferencaValor + '%';
+        } else {
+            compValor.className = 'comparison-item positive';
+            compValor.textContent = '+' + dados.diferencaValor + '%';
         }
     };
     </script>
 </head>
 <body>
-    <div class="cell-wrapper">
-        <!-- Título do widget -->
-        <div class="cell-wrapper__caption">Leads Ganhos e Conversão</div>
-
-        <!-- Número de leads ganhos -->
-        <div class="cell-wrapper__data">
-            <div class="cell-wrapper__data__num" id="leads-ganhos">23</div>
-            <div class="cell-wrapper__data__label">Leads ganhos no período</div>
-        </div>
-
-        <!-- Valor total de conversão -->
-        <div class="cell-wrapper__value">
-            <div class="cell-wrapper__value__num" id="valor-total">R$ 45.750,00</div>
-            <div class="cell-wrapper__value__label">Valor total de conversão</div>
-        </div>
-
-        <!-- Comparação com período anterior -->
-        <div class="cell-wrapper__bottom green" id="comparacao">
-            +15% vs período anterior
+    <div class="widget-container">
+        <div class="widget-header">NEGÓCIOS GANHOS</div>
+        
+        <div class="widget-content">
+            <div class="main-number" id="negocios-ganhos">23</div>
+            <div class="main-value" id="valor-total">R$45.750</div>
+            
+            <div class="divider"></div>
+            
+            <div class="comparison">
+                <div class="comparison-item negative" id="comp-negocios">-8 esta semana</div>
+                <div class="comparison-item positive" id="comp-valor">+15% esta semana</div>
+            </div>
         </div>
     </div>
 </body>
