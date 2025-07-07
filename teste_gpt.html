@@ -2,97 +2,117 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Widget Kommo – Leads e Conversão</title>
+  <title>Widget 1×1 – Leads & Conversão</title>
   <style>
+    /* --- Estilo do card Kommo --- */
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
       background: transparent;
-    }
-    .widget-container {
-      display: flex;
-      gap: 16px;
-      padding: 8px;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     .cell-wrapper {
       background: #ffffff;
-      border-radius: 6px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      padding: 12px;
-      width: 180px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 16px;
       box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
+
+    /* --- Topo: dois blocos lado a lado --- */
+    .metrics {
+      display: flex;
+      align-items: flex-start;
+    }
+    .metric {
+      flex: 1;
+    }
+    .metric + .metric {
+      margin-left: 24px;
+    }
+
     .cell-wrapper__caption {
-      font-size: 14px;
+      font-size: 12px;
+      font-weight: 600;
       color: #555;
-      margin-bottom: 6px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
     }
     .cell-wrapper__data {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: bold;
       color: #222;
-      margin-bottom: 8px;
+      line-height: 1;
     }
-    .cell-wrapper__bottom {
+
+    /* --- Rodapé: linha separadora + delta combinado --- */
+    .divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 12px 0;
+    }
+    .delta {
       font-size: 12px;
+      font-weight: 600;
     }
-    .cell-wrapper__bottom.green { color: #2e7d32; }
-    .cell-wrapper__bottom.red   { color: #c62828; }
+    .delta.green { color: #2dc868; }
+    .delta.red   { color: #e03e3e; }
   </style>
 </head>
 <body>
-  <div class="widget-container">
-    <!-- Leads Ganhos -->
-    <div class="cell-wrapper">
-      <div class="cell-wrapper__caption">Leads Ganhos</div>
-      <div class="cell-wrapper__data" id="current-leads">0</div>
-      <div class="cell-wrapper__bottom" id="delta-leads"></div>
+  <div class="cell-wrapper">
+    <!-- 1) Métricas atuais -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="cell-wrapper__caption">Leads Ganhos</div>
+        <div class="cell-wrapper__data" id="current-leads">0</div>
+      </div>
+      <div class="metric">
+        <div class="cell-wrapper__caption">Valor de Conversão (R$)</div>
+        <div class="cell-wrapper__data" id="current-value">R$ 0,00</div>
+      </div>
     </div>
 
-    <!-- Valor de Conversão -->
-    <div class="cell-wrapper">
-      <div class="cell-wrapper__caption">Valor de Conversão (R$)</div>
-      <div class="cell-wrapper__data" id="current-value">R$ 0</div>
-      <div class="cell-wrapper__bottom" id="delta-value"></div>
+    <!-- 2) Separador -->
+    <div class="divider"></div>
+
+    <!-- 3) Delta do período anterior -->
+    <div class="delta green" id="delta-combined">
+      +0 leads, +R$ 0,00 vs. período anterior
     </div>
   </div>
 
   <script>
-    // === EXEMPLO DE DADOS ===
-    // Substitua estes valores por uma chamada à sua API ou por
-    // parâmetros que o Kommo possa passar ao widget.
+    // === Exemplo de dados (substitua pela sua API) ===
     const data = {
-      current: {
-        leads: 25,
-        value: 1250.50
-      },
-      previous: {
-        leads: 20,
-        value: 1100.00
-      }
+      current: { leads: 25, value: 1250.50 },
+      previous:{ leads: 20, value: 1100.00 }
     };
 
-    // Preenche valores atuais
+    // Preenche atuais
     document.getElementById('current-leads').innerText = data.current.leads;
-    document.getElementById('current-value').innerText = 
-      'R$ ' + data.current.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    document.getElementById('current-value').innerText =
+      'R$ ' + data.current.value
+        .toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-    // Calcula diferenças
-    const diffLeads  = data.current.leads  - data.previous.leads;
-    const diffValue  = data.current.value  - data.previous.value;
+    // Calcula diffs
+    const dLeads = data.current.leads - data.previous.leads;
+    const dValue = data.current.value - data.previous.value;
 
-    // Formata texto e cor para Leads
-    const elDeltaLeads = document.getElementById('delta-leads');
-    const signLeads = diffLeads >= 0 ? '+' : '';
-    elDeltaLeads.innerText = `${signLeads}${diffLeads} vs. período anterior`;
-    elDeltaLeads.classList.add(diffLeads >= 0 ? 'green' : 'red');
-
-    // Formata texto e cor para Valor
-    const elDeltaValue = document.getElementById('delta-value');
-    const signValue = diffValue >= 0 ? '+' : '';
-    elDeltaValue.innerText = `${signValue}R$ ${Math.abs(diffValue)
-      .toLocaleString('pt-BR', { minimumFractionDigits: 2 })} vs. período anterior`;
-    elDeltaValue.classList.add(diffValue >= 0 ? 'green' : 'red');
+    // Formata e cor
+    const signLeads = dLeads >= 0 ? '+' : '';
+    const signValue = dValue >= 0 ? '+' : '';
+    const deltaEl = document.getElementById('delta-combined');
+    deltaEl.innerText =
+      `${signLeads}${dLeads} leads, ${signValue}R$ ` +
+      `${Math.abs(dValue).toLocaleString('pt-BR',{minimumFractionDigits:2})} ` +
+      `vs. período anterior`;
+    deltaEl.classList.toggle('green', dLeads+dValue >= 0);
+    deltaEl.classList.toggle('red',   dLeads+dValue <  0);
   </script>
 </body>
 </html>
