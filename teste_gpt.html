@@ -4,45 +4,71 @@
   <meta charset="utf-8" />
   <title>Widget 1×1 – Negócios &amp; Conversão</title>
   <style>
-    body {
+    /* Base e responsividade */
+    html, body {
+      width: 100%;
+      height: 100%;
       margin: 0;
+      padding: 0;
+      overflow: hidden;
       background: transparent;
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
+
+    /* Container principal */
     .cell-wrapper {
+      box-sizing: border-box;
       width: 100%;
+      height: 100%;
+      padding: 16px;
       background: #ffffff;
       border-radius: 4px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      padding: 16px;
-      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
     }
+
+    /* Título */
     .cell-wrapper__caption {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
-      color: #555;
+      color: #4a4a4a;
       text-transform: uppercase;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
-    .cell-wrapper__data {
-      font-size: 28px;
-      font-weight: bold;
-      color: #222;
+
+    /* Número de negócios */
+    #current-deals {
+      font-size: 40px;
+      font-weight: 700;
+      color: #222222;
       line-height: 1;
-      margin-bottom: 4px;
+      margin: 0;
     }
+
+    /* Valor de conversão */
+    #current-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #555555;
+      line-height: 1;
+      margin: 4px 0 0;
+    }
+
+    /* Separador */
     .divider {
       height: 1px;
-      background: #e0e0e0;
-      margin: 8px 0;
+      background: #e6eaef;
+      margin: 12px 0;
+      flex-shrink: 0;
     }
+
+    /* Deltas */
     .delta {
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .delta:last-child {
-      margin-bottom: 0;
+      line-height: 1.2;
+      margin: 2px 0;
     }
     .delta.green { color: #2dc868; }
     .delta.red   { color: #e03e3e; }
@@ -51,42 +77,42 @@
 <body>
   <div class="cell-wrapper">
     <div class="cell-wrapper__caption">NEGÓCIOS GANHOS</div>
-    <div class="cell-wrapper__data" id="current-deals">0</div>
-    <div class="cell-wrapper__data" id="current-value">R$ 0,00</div>
+
+    <div id="current-deals">0</div>
+    <div id="current-value">R$ 0,00</div>
 
     <div class="divider"></div>
 
-    <div class="delta green" id="delta-deals">+0 negócios</div>
-    <div class="delta green" id="delta-value">+R$ 0,00</div>
+    <div id="delta-deals" class="delta green">+0 negócios</div>
+    <div id="delta-value" class="delta green">+R$ 0,00</div>
   </div>
 
   <script>
-    // === Exemplo de dados – substitua pela sua API ou parâmetros Kommo ===
+    // === Exemplo de dados (substitua pela sua API) ===
     const data = {
       current: { deals: 25, value: 1250.50 },
       previous:{ deals: 20, value: 1100.00 }
     };
 
-    // atuais
+    // Preenche atuais
     document.getElementById('current-deals').innerText =
       data.current.deals;
     document.getElementById('current-value').innerText =
       'R$ ' + data.current.value
         .toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-    // diferenças
-    const dDeals = data.current.deals - data.previous.deals;
+    // Calcula diffs
+    const dDeals = data.current.deals  - data.previous.deals;
     const dValue = data.current.value - data.previous.value;
 
-    // preenche delta de negócios
+    // Delta de negócios
     const elDeals = document.getElementById('delta-deals');
     const signDeals = dDeals >= 0 ? '+' : '-';
-    elDeals.innerText =
-      `${signDeals}${Math.abs(dDeals)} negócios`;
+    elDeals.innerText = `${signDeals}${Math.abs(dDeals)} negócios`;
     elDeals.classList.toggle('green', dDeals >= 0);
     elDeals.classList.toggle('red',   dDeals <  0);
 
-    // preenche delta de valor
+    // Delta de valor
     const elValue = document.getElementById('delta-value');
     const signValue = dValue >= 0 ? '+' : '-';
     elValue.innerText =
