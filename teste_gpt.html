@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>Widget 1×1 – Negócios &amp; Conversão</title>
   <style>
-    /* Base e responsividade */
+    /* --- Reset e responsivo --- */
     html, body {
       width: 100%;
       height: 100%;
@@ -15,74 +15,80 @@
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
 
-    /* Container principal */
+    /* --- Card container --- */
     .cell-wrapper {
       box-sizing: border-box;
       width: 100%;
       height: 100%;
       padding: 16px;
-      background: #ffffff;
+      background: #0B2141;              /* mes­ma cor do painel Kommo */
       border-radius: 4px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
     }
 
-    /* Título */
+    /* --- Título (caption) --- */
     .cell-wrapper__caption {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 600;
-      color: #4a4a4a;
+      color: #FFFFFF;
       text-transform: uppercase;
       margin-bottom: 8px;
     }
 
-    /* Número de negócios */
+    /* --- Número principal de negócios --- */
     #current-deals {
       font-size: 40px;
       font-weight: 700;
-      color: #222222;
+      color: #8769FF;                   /* mes­ma púrpura do painel */
       line-height: 1;
       margin: 0;
     }
 
-    /* Valor de conversão */
+    /* --- Valor de conversão em R$ --- */
     #current-value {
       font-size: 24px;
       font-weight: 600;
-      color: #555555;
+      color: #FFFFFF;
       line-height: 1;
       margin: 4px 0 0;
     }
 
-    /* Separador */
+    /* --- Linha separadora --- */
     .divider {
+      width: 100%;
       height: 1px;
-      background: #e6eaef;
+      background: rgba(255,255,255,0.2);
       margin: 12px 0;
       flex-shrink: 0;
     }
 
-    /* Deltas */
+    /* --- Deltas (diferenças) --- */
     .delta {
       font-size: 14px;
       font-weight: 600;
       line-height: 1.2;
       margin: 2px 0;
     }
-    .delta.green { color: #2dc868; }
-    .delta.red   { color: #e03e3e; }
+    .delta.green { color: #2DC868; }    /* verde Kommo */
+    .delta.red   { color: #E03E3E; }
   </style>
 </head>
 <body>
   <div class="cell-wrapper">
+    <!-- Título -->
     <div class="cell-wrapper__caption">NEGÓCIOS GANHOS</div>
 
+    <!-- Métricas atuais -->
     <div id="current-deals">0</div>
     <div id="current-value">R$ 0,00</div>
 
+    <!-- Separador -->
     <div class="divider"></div>
 
+    <!-- Diferenças -->
     <div id="delta-deals" class="delta green">+0 negócios</div>
     <div id="delta-value" class="delta green">+R$ 0,00</div>
   </div>
@@ -94,30 +100,32 @@
       previous:{ deals: 20, value: 1100.00 }
     };
 
-    // Preenche atuais
+    // Preenche os valores atuais
     document.getElementById('current-deals').innerText =
       data.current.deals;
     document.getElementById('current-value').innerText =
-      'R$ ' + data.current.value
-        .toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+      'R$ ' + data.current.value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2
+      });
 
-    // Calcula diffs
+    // Calcula as diferenças
     const dDeals = data.current.deals  - data.previous.deals;
     const dValue = data.current.value - data.previous.value;
 
-    // Delta de negócios
+    // Preenche delta de negócios
     const elDeals = document.getElementById('delta-deals');
     const signDeals = dDeals >= 0 ? '+' : '-';
     elDeals.innerText = `${signDeals}${Math.abs(dDeals)} negócios`;
     elDeals.classList.toggle('green', dDeals >= 0);
     elDeals.classList.toggle('red',   dDeals <  0);
 
-    // Delta de valor
+    // Preenche delta de valor
     const elValue = document.getElementById('delta-value');
     const signValue = dValue >= 0 ? '+' : '-';
     elValue.innerText =
-      `${signValue}R$ ${Math.abs(dValue)
-        .toLocaleString('pt-BR',{ minimumFractionDigits: 2 })}`;
+      `${signValue}R$ ${Math.abs(dValue).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2
+      })}`;
     elValue.classList.toggle('green', dValue >= 0);
     elValue.classList.toggle('red',   dValue <  0);
   </script>
