@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Widget Kommo – Leads e Conversão</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: transparent;
+    }
+    .widget-container {
+      display: flex;
+      gap: 16px;
+      padding: 8px;
+    }
+    .cell-wrapper {
+      background: #ffffff;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 180px;
+      box-sizing: border-box;
+    }
+    .cell-wrapper__caption {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .cell-wrapper__data {
+      font-size: 24px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 8px;
+    }
+    .cell-wrapper__bottom {
+      font-size: 12px;
+    }
+    .cell-wrapper__bottom.green { color: #2e7d32; }
+    .cell-wrapper__bottom.red   { color: #c62828; }
+  </style>
+</head>
+<body>
+  <div class="widget-container">
+    <!-- Leads Ganhos -->
+    <div class="cell-wrapper">
+      <div class="cell-wrapper__caption">Leads Ganhos</div>
+      <div class="cell-wrapper__data" id="current-leads">0</div>
+      <div class="cell-wrapper__bottom" id="delta-leads"></div>
+    </div>
+
+    <!-- Valor de Conversão -->
+    <div class="cell-wrapper">
+      <div class="cell-wrapper__caption">Valor de Conversão (R$)</div>
+      <div class="cell-wrapper__data" id="current-value">R$ 0</div>
+      <div class="cell-wrapper__bottom" id="delta-value"></div>
+    </div>
+  </div>
+
+  <script>
+    // === EXEMPLO DE DADOS ===
+    // Substitua estes valores por uma chamada à sua API ou por
+    // parâmetros que o Kommo possa passar ao widget.
+    const data = {
+      current: {
+        leads: 25,
+        value: 1250.50
+      },
+      previous: {
+        leads: 20,
+        value: 1100.00
+      }
+    };
+
+    // Preenche valores atuais
+    document.getElementById('current-leads').innerText = data.current.leads;
+    document.getElementById('current-value').innerText = 
+      'R$ ' + data.current.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    // Calcula diferenças
+    const diffLeads  = data.current.leads  - data.previous.leads;
+    const diffValue  = data.current.value  - data.previous.value;
+
+    // Formata texto e cor para Leads
+    const elDeltaLeads = document.getElementById('delta-leads');
+    const signLeads = diffLeads >= 0 ? '+' : '';
+    elDeltaLeads.innerText = `${signLeads}${diffLeads} vs. período anterior`;
+    elDeltaLeads.classList.add(diffLeads >= 0 ? 'green' : 'red');
+
+    // Formata texto e cor para Valor
+    const elDeltaValue = document.getElementById('delta-value');
+    const signValue = diffValue >= 0 ? '+' : '';
+    elDeltaValue.innerText = `${signValue}R$ ${Math.abs(diffValue)
+      .toLocaleString('pt-BR', { minimumFractionDigits: 2 })} vs. período anterior`;
+    elDeltaValue.classList.add(diffValue >= 0 ? 'green' : 'red');
+  </script>
+</body>
+</html>
