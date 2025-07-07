@@ -1,40 +1,22 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <title>Widget 1×1 – Leads & Conversão</title>
+  <meta charset="utf-8" />
+  <title>Widget 1×1 – Negócios &amp; Conversão</title>
   <style>
-    /* --- Estilo do card Kommo --- */
     body {
       margin: 0;
       background: transparent;
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
     .cell-wrapper {
+      width: 100%;
       background: #ffffff;
       border-radius: 4px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       padding: 16px;
       box-sizing: border-box;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
     }
-
-    /* --- Topo: dois blocos lado a lado --- */
-    .metrics {
-      display: flex;
-      align-items: flex-start;
-    }
-    .metric {
-      flex: 1;
-    }
-    .metric + .metric {
-      margin-left: 24px;
-    }
-
     .cell-wrapper__caption {
       font-size: 12px;
       font-weight: 600;
@@ -47,17 +29,20 @@
       font-weight: bold;
       color: #222;
       line-height: 1;
+      margin-bottom: 4px;
     }
-
-    /* --- Rodapé: linha separadora + delta combinado --- */
     .divider {
       height: 1px;
       background: #e0e0e0;
-      margin: 12px 0;
+      margin: 8px 0;
     }
     .delta {
       font-size: 12px;
       font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .delta:last-child {
+      margin-bottom: 0;
     }
     .delta.green { color: #2dc868; }
     .delta.red   { color: #e03e3e; }
@@ -65,54 +50,50 @@
 </head>
 <body>
   <div class="cell-wrapper">
-    <!-- 1) Métricas atuais -->
-    <div class="metrics">
-      <div class="metric">
-        <div class="cell-wrapper__caption">Leads Ganhos</div>
-        <div class="cell-wrapper__data" id="current-leads">0</div>
-      </div>
-      <div class="metric">
-        <div class="cell-wrapper__caption">Valor de Conversão (R$)</div>
-        <div class="cell-wrapper__data" id="current-value">R$ 0,00</div>
-      </div>
-    </div>
+    <div class="cell-wrapper__caption">NEGÓCIOS GANHOS</div>
+    <div class="cell-wrapper__data" id="current-deals">0</div>
+    <div class="cell-wrapper__data" id="current-value">R$ 0,00</div>
 
-    <!-- 2) Separador -->
     <div class="divider"></div>
 
-    <!-- 3) Delta do período anterior -->
-    <div class="delta green" id="delta-combined">
-      +0 leads, +R$ 0,00 vs. período anterior
-    </div>
+    <div class="delta green" id="delta-deals">+0 negócios</div>
+    <div class="delta green" id="delta-value">+R$ 0,00</div>
   </div>
 
   <script>
-    // === Exemplo de dados (substitua pela sua API) ===
+    // === Exemplo de dados – substitua pela sua API ou parâmetros Kommo ===
     const data = {
-      current: { leads: 25, value: 1250.50 },
-      previous:{ leads: 20, value: 1100.00 }
+      current: { deals: 25, value: 1250.50 },
+      previous:{ deals: 20, value: 1100.00 }
     };
 
-    // Preenche atuais
-    document.getElementById('current-leads').innerText = data.current.leads;
+    // atuais
+    document.getElementById('current-deals').innerText =
+      data.current.deals;
     document.getElementById('current-value').innerText =
       'R$ ' + data.current.value
         .toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-    // Calcula diffs
-    const dLeads = data.current.leads - data.previous.leads;
+    // diferenças
+    const dDeals = data.current.deals - data.previous.deals;
     const dValue = data.current.value - data.previous.value;
 
-    // Formata e cor
-    const signLeads = dLeads >= 0 ? '+' : '';
-    const signValue = dValue >= 0 ? '+' : '';
-    const deltaEl = document.getElementById('delta-combined');
-    deltaEl.innerText =
-      `${signLeads}${dLeads} leads, ${signValue}R$ ` +
-      `${Math.abs(dValue).toLocaleString('pt-BR',{minimumFractionDigits:2})} ` +
-      `vs. período anterior`;
-    deltaEl.classList.toggle('green', dLeads+dValue >= 0);
-    deltaEl.classList.toggle('red',   dLeads+dValue <  0);
+    // preenche delta de negócios
+    const elDeals = document.getElementById('delta-deals');
+    const signDeals = dDeals >= 0 ? '+' : '-';
+    elDeals.innerText =
+      `${signDeals}${Math.abs(dDeals)} negócios`;
+    elDeals.classList.toggle('green', dDeals >= 0);
+    elDeals.classList.toggle('red',   dDeals <  0);
+
+    // preenche delta de valor
+    const elValue = document.getElementById('delta-value');
+    const signValue = dValue >= 0 ? '+' : '-';
+    elValue.innerText =
+      `${signValue}R$ ${Math.abs(dValue)
+        .toLocaleString('pt-BR',{ minimumFractionDigits: 2 })}`;
+    elValue.classList.toggle('green', dValue >= 0);
+    elValue.classList.toggle('red',   dValue <  0);
   </script>
 </body>
 </html>
