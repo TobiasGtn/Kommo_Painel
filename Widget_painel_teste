@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads Ganhos - Widget Kommo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: transparent;
+        }
+        
+        .widget-card {
+            background: #2E3441;
+            border-radius: 8px;
+            padding: 20px;
+            color: #fff;
+            text-align: center;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .widget-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(139, 92, 246, 0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+        }
+        
+        .widget-title {
+            font-size: 14px;
+            color: #A0A7B8;
+            margin: 0 0 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .widget-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #8B5CF6;
+            margin: 0 0 5px 0;
+            line-height: 1;
+        }
+        
+        .widget-amount {
+            font-size: 20px;
+            color: #fff;
+            margin: 0;
+            font-weight: 500;
+        }
+        
+        .widget-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 150px;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 3px solid #8B5CF6;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .widget-error {
+            color: #EF4444;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .widget-period {
+            font-size: 11px;
+            color: #6B7280;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="widget-container">
+        <div class="widget-loading">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        // ====== CONFIGURAÇÃO - SUBSTITUA COM SUA URL DO GAS ======
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzQFz10-Cs_Gf3Vl_mLvxbAMwljXiSlBYKDhLjIsHyMgTT64Q2d7vdZZASLe8i_2Q1Z/exec';
+        
+        // ====== FUNÇÕES DO WIDGET ======
+        
+        // Função para obter parâmetros do Kommo
+        function getKommoParams() {
+            const params = {
+                dateFrom: null,
+                dateTo: null,
+                userId: null
+            };
+            
+            // Tenta capturar parâmetros da URL se disponíveis
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('dateFrom')) {
+                params.dateFrom = urlParams.get('dateFrom');
+            }
+            if (urlParams.has('dateTo')) {
+                params.dateTo = urlParams.get('dateTo');
+            }
+            if (urlParams.has('userId')) {
+                params.userId = urlParams.get('userId');
+            }
+            
+            // Data padrão: mês atual
+            if (!params.dateFrom || !params.dateTo) {
+                const now = new Date();
+                params.dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+                params.dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+            }
+            
+            return params;
+        }
+        
+        // Função para formatar moeda
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+        
+        // Função para formatar período
+        function formatPeriod(dateFrom, dateTo) {
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            const from = new Date(dateFrom).toLocaleDateString('pt-BR', options);
+            const to = new Date(dateTo).toLocaleDateString('pt-BR', options);
+            return `${from} - ${to}`;
+        }
+        
+        // Função para carregar dados
+        async function loadData() {
+            const container = document.getElementById('widget-container');
+            const params = getKommoParams();
+            
+            try {
+                // Faz requisição POST para o GAS
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Verifica se há erro nos dados
+                if (data.error) {
+                    throw new Error(data.message || 'Erro ao buscar dados');
+                }
+                
+                // Renderiza o widget com os dados
+                container.innerHTML = `
+                    <div class="widget-card">
+                        <h3 class="widget-title">Leads Ganhos</h3>
+                        <p class="widget-value">${data.count || 0}</p>
+                        <p class="widget-amount">${formatCurrency(data.totalValue || 0)}</p>
+                        <p class="widget-period">${formatPeriod(params.dateFrom, params.dateTo)}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                
+                // Mostra erro amigável
+                container.innerHTML = `
+                    <div class="widget-card">
+                        <div class="widget-error">
+                            <strong>Erro ao carregar dados</strong><br>
+                            <small style="opacity: 0.7">${error.message}</small><br>
+                            <small style="opacity: 0.5; font-size: 10px">Verifique se o GAS está configurado corretamente</small>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Função para recarregar dados periodicamente
+        function startAutoRefresh() {
+            // Recarrega a cada 5 minutos (300000 ms)
+            setInterval(loadData, 300000);
+        }
+        
+        // ====== INICIALIZAÇÃO ======
+        
+        // Aguarda o DOM carregar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initialize);
+        } else {
+            initialize();
+        }
+        
+        function initialize() {
+            // Carrega dados imediatamente
+            loadData();
+            
+            // Inicia auto-atualização
+            startAutoRefresh();
+            
+            // Adiciona listener para visibilidade da página
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    // Recarrega quando a página volta a ficar visível
+                    loadData();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
