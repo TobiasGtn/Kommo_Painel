@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard Grazziotin - MVP</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 18px; }
+    .cards { display:flex; gap:12px; margin-bottom:18px; }
+    .card { padding:12px; border:1px solid #ddd; border-radius:6px; width:180px; text-align:center; }
+    canvas { max-width:700px; }
+  </style>
+</head>
+<body>
+  <h2>Dashboard Grazziotin - MVP</h2>
+
+  <div class="cards">
+    <div class="card"><strong id="totalLeads">—</strong><div>Total leads (90d)</div></div>
+    <div class="card"><strong id="taxaConv">—</strong><div>Taxa de conversão</div></div>
+    <div class="card"><strong id="tempoMedio">—</strong><div>Tempo médio (dias)</div></div>
+    <div class="card"><strong id="totalGanho">—</strong><div>Total Ganho</div></div>
+  </div>
+
+  <h3>Funil Prospecção Outbound (Planilha do Google)</h3>
+  <canvas id="outboundChart" height="300"></canvas>
+
+  <h3>Leads por vendedor (barras)</h3>
+  <canvas id="barrasVendedor" height="300"></canvas>
+
+  <script>
+    const GAS_ENDPOINT_URL = "URL_DO_SEU_GAS_AQUI"; // *** substituir ***
+
+    // Etapas fixas do funil Outbound (na sequência solicitada)
+    const OUTBOUND_STEPS = [
+      "Prospects",
+      "Contato estabelecido",
+      "Contato decisor",
+      "Qualificado",
+      "Reunião análise",
+      "Proposta apresentada",
+      "Ganho"
+    ];
+
+    async function carregarDados() {
+      const res = await fetch(GAS_ENDPOINT_URL + "?periodo=90");
+      const json = await res.json();
+      const dados = json.dados || []; // linhas: [id, created_atISO, vendedor, valor, etapa, tagsCSV, source]
+
+      // Cards simples
+      document.getElementById('totalLeads').innerText = dados.length;
+
+      // Total ganho (soma de 'valor' quando etapa contém 'Ganho' ou tags têm 'Ganho')
+      let totalGanho = 0;
+      dados.forEach(r => {
+        const valor = Number(r[3]) || 0;
+        // heurística: se etapa inclui 'Ganho' ou tags incluem 'Ganho', contar como ganho
+        const etapa = (r[4]||"").toLowerCase();
+        const tags = (r[5]||"").toLowerCase();
+        if (etapa.includes("ganho") || tags.includes("ganho")) totalGanho += valor;
+      });
+      document.getElementById('totalGanho').innerText = totalGanho.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+
+      // Tempo médio: não temos data de fechamento no MVP; manter placeholder
+      document.getElementById('tempoMedio').innerText = "-";
+
+      // Taxa de conversão: (ganhos / total leads)
+      const ganhosCount = dados.filter(r => ((r[4]||"").toLowerCase().includes("ganho") || (r[5]||"").toLowerCase().includes("ganho"))).length;
+      const taxa = dados.length ? Math.round((ganhosCount / dados.length) * 100) + "%" : "0%";
+      document.getElementById('taxaConv').innerText = taxa;
+
+      // Gráfico Outbound: filtrar por fonte == "Planilha do Google"
+      const outboundLeads = dados.filter(r => (r[6] || "").toLowerCase() === "planilha do google");
+      // Mapear por tags para cada etapa: cada etapa do OUTBOUND_STEPS corresponde a leads que têm tag igual ao nome da etapa
+      const counts = OUTBOUND_STEPS.map(step => outboundLeads.filter(r => (r[5]||"").split(",").map(s=>s.trim().toLowerCase()).includes(step.toLowerCase())).length);
+
+      // Percentual entre etapas (comparação relativa vs etapa anterior)
+      const percBetween = counts.map((c,i) => {
+        if (i===0) return 100;
+        return counts[i-1] ? Math.round((c / counts[i-1]) * 100) : 0;
+      });
+
+      // Render outbound Chart (horizontal bar)
+      const ctx = document.getElementById('outboundChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: OUTBOUND_STEPS,
+          datasets: [{
+            label: 'Leads',
+            data: counts,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          plugins: {
+            tooltip: {
+              callbacks: {
+                afterBody: function(ctxItems) {
+                  const idx = ctxItems[0].dataIndex;
+                  return 'Conversão da etapa anterior: ' + (percBetween[idx] + '%');
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Gráfico: Leads por vendedor
+      const mapV = {};
+      dados.forEach(r => {
+        const v = r[2] || "Sem responsável";
+        mapV[v] = (mapV[v] || 0) + 1;
+      });
+      const vLabels = Object.keys(mapV);
+      const vCounts = vLabels.map(k => mapV[k]);
+
+      const ctx2 = document.getElementById('barrasVendedor').getContext('2d');
+      new Chart(ctx2, {
+        type: 'bar',
+        data: { labels: vLabels, datasets: [{ label: 'Leads', data: vCounts }] },
+        options: { indexAxis: 'x' }
+      });
+    }
+
+    carregarDados().catch(err => {
+      console.error(err);
+      alert('Erro ao carregar dados. Verifique a URL do GAS e se o endpoint está público.');
+    });
+  </script>
+</body>
+</html>
