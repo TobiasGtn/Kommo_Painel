@@ -1,131 +1,252 @@
 <!doctype html>
-<html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>Dashboard Grazziotin - MVP</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Chart.js (CDN) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 18px; }
-    .cards { display:flex; gap:12px; margin-bottom:18px; }
-    .card { padding:12px; border:1px solid #ddd; border-radius:6px; width:180px; text-align:center; }
-    canvas { max-width:700px; }
+    :root{--gap:18px;--border:#e5e7eb}
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,sans-serif;margin:0;padding:24px;color:#111827;background:#fff}
+    h1,h2,h3{margin:0 0 12px 0}
+    .wrap{max-width:1200px;margin:0 auto}
+    .cards{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 20px}
+    .card{flex:1 1 220px;min-width:200px;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+    .card strong{font-size:1.5rem;display:block}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--gap)}
+    .panel{border:1px solid var(--border);border-radius:10px;padding:12px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+    button{border:1px solid var(--border);border-radius:8px;background:#f9fafb;padding:8px 10px;cursor:pointer}
+    button:hover{background:#f3f4f6}
+    pre{white-space:pre-wrap;background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:360px;overflow:auto}
+    footer{margin-top:22px;font-size:.9rem;color:#6b7280}
+    .muted{color:#6b7280}
+    canvas{max-width:100%}
   </style>
 </head>
 <body>
-  <h2>Dashboard Grazziotin - MVP</h2>
+  <div class="wrap">
+    <h2>Dashboard Grazziotin — MVP</h2>
+    <p class="muted">Período máximo: últimos 90 dias (MVP).</p>
 
-  <div class="cards">
-    <div class="card"><strong id="totalLeads">—</strong><div>Total leads (90d)</div></div>
-    <div class="card"><strong id="taxaConv">—</strong><div>Taxa de conversão</div></div>
-    <div class="card"><strong id="tempoMedio">—</strong><div>Tempo médio (dias)</div></div>
-    <div class="card"><strong id="totalGanho">—</strong><div>Total Ganho</div></div>
+    <!-- CARDS -->
+    <div class="cards">
+      <div class="card"><strong id="card-total">—</strong><span>Total de Leads</span></div>
+      <div class="card"><strong id="card-conv">—</strong><span>Taxa de Conversão</span></div>
+      <div class="card"><strong id="card-avg">—</strong><span>Tempo médio (dias)</span></div>
+      <div class="card"><strong id="card-ganho">—</strong><span>Total Ganho</span></div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="grid">
+      <div class="panel">
+        <h3>Prospecção Outbound (fonte: “Google sheet”)</h3>
+        <canvas id="chart-outbound" height="260"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Leads por Vendedor</h3>
+        <canvas id="chart-vendedores" height="260"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Evolução Mensal (Criados)</h3>
+        <canvas id="chart-linha" height="260"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Funil Geral (Etapas do CRM)</h3>
+        <canvas id="chart-funil" height="260"></canvas>
+      </div>
+    </div>
+
+    <!-- LISTAS INFORMATIVAS -->
+    <h3 style="margin-top:24px;">Listas informativas</h3>
+    <div class="toolbar">
+      <button data-list="fields">Campos</button>
+      <button data-list="events">Eventos</button>
+      <button data-list="pipelines">Pipelines</button>
+      <button data-list="sources">Fontes</button>
+      <button data-list="users">Vendedores</button>
+      <button data-list="tags">Tags</button>
+      <button data-list="calls">Chamadas</button>
+      <button id="btn-recarregar">Recarregar</button>
+    </div>
+    <pre id="box-lista" aria-live="polite"></pre>
+
+    <footer>Grazziotin Consultoria Comercial — MVP Kommo &middot; <span class="muted">HTML estático para GitHub Pages</span></footer>
   </div>
 
-  <h3>Funil Prospecção Outbound (Planilha do Google)</h3>
-  <canvas id="outboundChart" height="300"></canvas>
+<script>
+/* =======================
+   CONFIGURE AQUI
+   ======================= */
+const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwIJaikbGhLnyQQD61hi5wQ-mJ86r3coq4djRD644P8lfJfS1DpxnDQpEofbQIBi71_/exec"; // <— substitua!
 
-  <h3>Leads por vendedor (barras)</h3>
-  <canvas id="barrasVendedor" height="300"></canvas>
+/* =======================
+   HELPERS
+   ======================= */
+async function fetchJSON(url){
+  const r = await fetch(url, {cache:"no-store"});
+  const text = await r.text();
+  // debug opcional:
+  // console.log("Resposta bruta do GAS:", text.slice(0,300));
+  if(!r.ok) throw new Error("HTTP "+r.status+" — "+text.slice(0,200));
+  let json; try{ json = JSON.parse(text); }catch(e){ throw new Error("Resposta não é JSON (verifique permissões do Web App)."); }
+  return json;
+}
+const toBRL = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const monthKey = iso => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
+const groupBy = (arr,fn) => arr.reduce((m,x)=>((m[fn(x)]=m[fn(x)]||[]).push(x),m),{});
+const tagsToArray = csv => (csv||"").split(",").map(s=>s.trim()).filter(Boolean);
 
-  <script>
-    const GAS_ENDPOINT_URL = "URL_DO_SEU_GAS_AQUI"; // *** substituir ***
+/* =======================
+   CONSTANTES DO DASH
+   ======================= */
+const OUTBOUND_STEPS = [
+  "Prospects",
+  "Contato estabelecido",
+  "Contato decisor",
+  "Qualificado",
+  "Reunião análise",
+  "Proposta apresentada",
+  "Ganho"
+];
 
-    // Etapas fixas do funil Outbound (na sequência solicitada)
-    const OUTBOUND_STEPS = [
-      "Prospects",
-      "Contato estabelecido",
-      "Contato decisor",
-      "Qualificado",
-      "Reunião análise",
-      "Proposta apresentada",
-      "Ganho"
-    ];
+/* =======================
+   CARREGAR LEADS
+   ======================= */
+async function loadLeads(periodoDias=90){
+  const url = `${GAS_ENDPOINT_URL}?periodo=${Math.min(periodoDias,90)}`;
+  const json = await fetchJSON(url);
+  const rows = json.dados || [];
+  // Estrutura: [id, created_atISO, vendedor, valor, etapa, tagsCSV, source]
+  return rows.map(r => ({
+    id: r[0],
+    created_at: r[1],
+    vendedor: r[2] || "—",
+    valor: Number(r[3]) || 0,
+    etapa: r[4] || "",
+    tags: r[5] || "",
+    source: r[6] || ""
+  }));
+}
 
-    async function carregarDados() {
-      const res = await fetch(GAS_ENDPOINT_URL + "?periodo=90");
-      const json = await res.json();
-      const dados = json.dados || []; // linhas: [id, created_atISO, vendedor, valor, etapa, tagsCSV, source]
+/* =======================
+   CARDS
+   ======================= */
+function renderCards(leads){
+  const total = leads.length;
+  const ganhosLeads = leads.filter(l => l.etapa.toLowerCase().includes("ganho") || l.tags.toLowerCase().includes("ganho"));
+  const taxa = total ? Math.round((ganhosLeads.length/total)*100) : 0;
+  const totalGanho = ganhosLeads.reduce((s,l)=>s+l.valor,0);
 
-      // Cards simples
-      document.getElementById('totalLeads').innerText = dados.length;
+  document.getElementById("card-total").textContent = total;
+  document.getElementById("card-conv").textContent = taxa + "%";
+  document.getElementById("card-avg").textContent = "-"; // sem data de fechamento no MVP
+  document.getElementById("card-ganho").textContent = toBRL(totalGanho);
+}
 
-      // Total ganho (soma de 'valor' quando etapa contém 'Ganho' ou tags têm 'Ganho')
-      let totalGanho = 0;
-      dados.forEach(r => {
-        const valor = Number(r[3]) || 0;
-        // heurística: se etapa inclui 'Ganho' ou tags incluem 'Ganho', contar como ganho
-        const etapa = (r[4]||"").toLowerCase();
-        const tags = (r[5]||"").toLowerCase();
-        if (etapa.includes("ganho") || tags.includes("ganho")) totalGanho += valor;
-      });
-      document.getElementById('totalGanho').innerText = totalGanho.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+/* =======================
+   GRÁFICOS (Chart.js)
+   ======================= */
+let CHARTS = {};
+function destroyChart(id){ if(CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; } }
 
-      // Tempo médio: não temos data de fechamento no MVP; manter placeholder
-      document.getElementById('tempoMedio').innerText = "-";
+function chartBarH(id, labels, data, label="Leads"){
+  destroyChart(id);
+  CHARTS[id] = new Chart(document.getElementById(id), {
+    type: "bar",
+    data: { labels, datasets: [{ label, data }] },
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false }
+  });
+}
+function chartBar(id, labels, data, label="Leads"){
+  destroyChart(id);
+  CHARTS[id] = new Chart(document.getElementById(id), {
+    type: "bar",
+    data: { labels, datasets: [{ label, data }] },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+function chartLine(id, labels, data, label="Criados"){
+  destroyChart(id);
+  CHARTS[id] = new Chart(document.getElementById(id), {
+    type: "line",
+    data: { labels, datasets: [{ label, data }] },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
 
-      // Taxa de conversão: (ganhos / total leads)
-      const ganhosCount = dados.filter(r => ((r[4]||"").toLowerCase().includes("ganho") || (r[5]||"").toLowerCase().includes("ganho"))).length;
-      const taxa = dados.length ? Math.round((ganhosCount / dados.length) * 100) + "%" : "0%";
-      document.getElementById('taxaConv').innerText = taxa;
+/* =======================
+   RENDERIZAÇÃO
+   ======================= */
+function renderOutbound(leads){
+  // aceita "Google sheet" (inglês) e "Planilha do Google" (pt)
+  const matchSource = s => s.includes("google sheet") || s.includes("planilha do google");
+  const sourceFilter = l => matchSource((l.source||"").toLowerCase());
+  const outbound = leads.filter(sourceFilter);
 
-      // Gráfico Outbound: filtrar por fonte == "Planilha do Google"
-      const outboundLeads = dados.filter(r => (r[6] || "").toLowerCase() === "planilha do google");
-      // Mapear por tags para cada etapa: cada etapa do OUTBOUND_STEPS corresponde a leads que têm tag igual ao nome da etapa
-      const counts = OUTBOUND_STEPS.map(step => outboundLeads.filter(r => (r[5]||"").split(",").map(s=>s.trim().toLowerCase()).includes(step.toLowerCase())).length);
+  const counts = OUTBOUND_STEPS.map(step => {
+    const sLower = step.toLowerCase();
+    return outbound.filter(l => tagsToArray(l.tags).map(t=>t.toLowerCase()).includes(sLower)).length;
+  });
+  chartBarH("chart-outbound", OUTBOUND_STEPS, counts, "Outbound");
+}
 
-      // Percentual entre etapas (comparação relativa vs etapa anterior)
-      const percBetween = counts.map((c,i) => {
-        if (i===0) return 100;
-        return counts[i-1] ? Math.round((c / counts[i-1]) * 100) : 0;
-      });
+function renderBarrasVendedores(leads){
+  const byVend = groupBy(leads, l => l.vendedor || "—");
+  const labels = Object.keys(byVend);
+  const data = labels.map(k => byVend[k].length);
+  chartBar("chart-vendedores", labels, data, "Leads");
+}
 
-      // Render outbound Chart (horizontal bar)
-      const ctx = document.getElementById('outboundChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: OUTBOUND_STEPS,
-          datasets: [{
-            label: 'Leads',
-            data: counts,
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          plugins: {
-            tooltip: {
-              callbacks: {
-                afterBody: function(ctxItems) {
-                  const idx = ctxItems[0].dataIndex;
-                  return 'Conversão da etapa anterior: ' + (percBetween[idx] + '%');
-                }
-              }
-            }
-          }
-        }
-      });
+function renderLinhaTempo(leads){
+  const byMonth = groupBy(leads, l => monthKey(l.created_at));
+  const labels = Object.keys(byMonth).sort();
+  const data = labels.map(k => byMonth[k].length);
+  chartLine("chart-linha", labels, data, "Criados");
+}
 
-      // Gráfico: Leads por vendedor
-      const mapV = {};
-      dados.forEach(r => {
-        const v = r[2] || "Sem responsável";
-        mapV[v] = (mapV[v] || 0) + 1;
-      });
-      const vLabels = Object.keys(mapV);
-      const vCounts = vLabels.map(k => mapV[k]);
+function renderFunilGeral(leads){
+  const byStage = groupBy(leads, l => l.etapa || "Sem etapa");
+  const labels = Object.keys(byStage);
+  const data = labels.map(k => byStage[k].length);
+  chartBarH("chart-funil", labels, data, "Etapas");
+}
 
-      const ctx2 = document.getElementById('barrasVendedor').getContext('2d');
-      new Chart(ctx2, {
-        type: 'bar',
-        data: { labels: vLabels, datasets: [{ label: 'Leads', data: vCounts }] },
-        options: { indexAxis: 'x' }
-      });
-    }
+/* =======================
+   LISTAS (botões)
+   ======================= */
+async function abrirLista(tipo){
+  const url = `${GAS_ENDPOINT_URL}?list=${encodeURIComponent(tipo)}`;
+  const json = await fetchJSON(url);
+  const head = json.cabecalho || [];
+  const rows = json.dados || [];
+  const linhas = [head.join("  |  ")].concat(rows.map(r => r.join("  |  ")));
+  document.getElementById("box-lista").textContent = linhas.join("\n") || "(lista vazia)";
+}
 
-    carregarDados().catch(err => {
-      console.error(err);
-      alert('Erro ao carregar dados. Verifique a URL do GAS e se o endpoint está público.');
-    });
-  </script>
+/* =======================
+   BOOT
+   ======================= */
+async function boot(){
+  try{
+    const leads = await loadLeads(90);
+    renderCards(leads);
+    renderOutbound(leads);
+    renderBarrasVendedores(leads);
+    renderLinhaTempo(leads);
+    renderFunilGeral(leads);
+  }catch(err){
+    alert("Erro ao carregar dashboard: " + err.message + "\nVerifique a URL do Web App e as permissões (Qualquer pessoa).");
+    console.error(err);
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  boot();
+  document.querySelectorAll("[data-list]").forEach(btn => btn.addEventListener("click", e => abrirLista(e.target.dataset.list)));
+  document.getElementById("btn-recarregar").addEventListener("click", boot);
+});
+</script>
 </body>
 </html>
