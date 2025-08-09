@@ -2,124 +2,187 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>Dashboard Grazziotin - MVP</title>
+  <title>Dashboard Grazziotin — MVP</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Chart.js (CDN) -->
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root{--gap:18px;--border:#e5e7eb}
-    *{box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,sans-serif;margin:0;padding:24px;color:#111827;background:#fff}
-    h1,h2,h3{margin:0 0 12px 0}
-    .wrap{max-width:1200px;margin:0 auto}
-    .cards{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 20px}
-    .card{flex:1 1 220px;min-width:200px;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
-    .card strong{font-size:1.5rem;display:block}
-  
-    /* NOVO: grid responsivo de 1 coluna no mobile, 2 colunas no desktop */
-    .grid{display:grid;grid-template-columns:1fr;gap:var(--gap);align-items:start}
-    @media (min-width: 980px){
-      .grid{grid-template-columns:1fr 1fr}
+    :root{
+      --bg:#0f1115;          /* fundo escuro elegante */
+      --panel:#151922;       /* painel */
+      --ink:#e8eaee;         /* texto primário */
+      --muted:#9aa3b2;       /* texto secundário */
+      --line:#1f2430;        /* borda */
+      --accent:#7f8ea3;      /* acentos neutros */
+      --gap:20px;
+      --radius:14px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
+      --card-shadow: 0 12px 24px rgba(0,0,0,.35);
     }
-  
-    .panel{border:1px solid var(--border);border-radius:10px;padding:12px}
-  
-    /* NOVO: controle de altura via CSS (remover height do <canvas>) */
-    .chart{width:100%;height:320px;display:block}
-  
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
-    button{border:1px solid var(--border);border-radius:8px;background:#f9fafb;padding:8px 10px;cursor:pointer}
-    button:hover{background:#f3f4f6}
-    pre{white-space:pre-wrap;background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:360px;overflow:auto}
-    footer{margin-top:22px;font-size:.9rem;color:#6b7280}
-    .muted{color:#6b7280}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--ink); background:
+      radial-gradient(1200px 1200px at 20% -10%, #1a2030 0%, transparent 60%),
+      radial-gradient(1000px 1000px at 120% 0%, #121829 0%, transparent 60%),
+      var(--bg);
+      font: 15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+    }
+    .wrap{max-width:1240px;margin:0 auto;padding:28px}
+    header{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand .dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(180deg,#cbd5e1,#94a3b8);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+    h1{font-size:18px;margin:0;color:var(--ink);letter-spacing:.3px}
+    .muted{color:var(--muted)}
+    .surface{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00));
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+
+    /* Cards */
+    .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin:16px 0 24px}
+    .card{padding:16px 16px 14px; backdrop-filter: blur(6px); box-shadow:var(--card-shadow)}
+    .card strong{display:block;font-size:1.8rem;letter-spacing:.2px}
+    .card span{color:var(--muted)}
+
+    /* Grid de gráficos */
+    .grid{
+      display:grid; gap:var(--gap);
+      grid-template-columns:1fr;
+      align-items:start;
+    }
+    @media (min-width: 980px){
+      .grid{ grid-template-columns:1fr 1fr; }
+    }
+    .panel{ padding:16px; display:flex; flex-direction:column; gap:10px; }
+    .panel h3{margin:0 0 4px 0; font-size:16px; font-weight:600; letter-spacing:.2px}
+    .panel-sub{margin-top:-4px;color:var(--muted);font-size:.95rem}
+
+    /* Chart box: altura fixa = nada de “espichar infinito” */
+    .chart-box{
+      position:relative; width:100%;
+      height:360px;            /* ajuste fino da altura do gráfico */
+      border-radius:12px; overflow:hidden;
+    }
+    canvas.chart{position:absolute; inset:0; width:100%!important; height:100%!important; display:block}
+
+    /* Toolbar das listas */
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+    .btn{
+      background:linear-gradient(180deg,#1b2230,#121723);
+      color:var(--ink); border:1px solid var(--line); border-radius:10px;
+      padding:8px 12px; cursor:pointer; transition:transform .06s ease, box-shadow .2s ease;
+      box-shadow: 0 6px 16px rgba(0,0,0,.32);
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(0,0,0,.4) }
+    pre{
+      margin-top:12px; padding:12px; border-radius:10px; border:1px solid var(--line);
+      background:linear-gradient(180deg,#141923,#10141c); color:var(--ink); max-height:360px; overflow:auto;
+    }
+    footer{margin:24px 0 8px; color:var(--muted); text-align:center}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h2>Dashboard Grazziotin — MVP</h2>
-    <p class="muted">Período máximo: últimos 90 dias (MVP).</p>
+    <header>
+      <div class="brand">
+        <div class="dot"></div>
+        <h1>Dashboard Grazziotin — <span class="muted">MVP Kommo</span></h1>
+      </div>
+      <div class="muted">Período máximo: últimos 90 dias</div>
+    </header>
 
     <!-- CARDS -->
-    <div class="cards">
-      <div class="card"><strong id="card-total">—</strong><span>Total de Leads</span></div>
-      <div class="card"><strong id="card-conv">—</strong><span>Taxa de Conversão</span></div>
-      <div class="card"><strong id="card-avg">—</strong><span>Tempo médio (dias)</span></div>
-      <div class="card"><strong id="card-ganho">—</strong><span>Total Ganho</span></div>
-    </div>
+    <section class="cards">
+      <div class="surface card"><strong id="card-total">—</strong><span>Total de Leads</span></div>
+      <div class="surface card"><strong id="card-conv">—</strong><span>Taxa de Conversão</span></div>
+      <div class="surface card"><strong id="card-avg">—</strong><span>Tempo médio (dias)</span></div>
+      <div class="surface card"><strong id="card-ganho">—</strong><span>Total Ganho</span></div>
+    </section>
 
     <!-- GRÁFICOS -->
-    <div class="grid">
-      <div class="panel">
-        <h3>Prospecção Outbound (fonte: “Google sheet”)</h3>
-        <canvas id="chart-outbound" height="260"></canvas>
+    <section class="grid">
+      <div class="surface panel">
+        <div>
+          <h3>Prospecção Outbound</h3>
+          <div class="panel-sub">Fonte: “Google sheet” (tags por etapa)</div>
+        </div>
+        <div class="chart-box"><canvas id="chart-outbound" class="chart"></canvas></div>
       </div>
-      <div class="panel">
+
+      <div class="surface panel">
         <h3>Leads por Vendedor</h3>
-        <canvas id="chart-vendedores" height="260"></canvas>
+        <div class="chart-box"><canvas id="chart-vendedores" class="chart"></canvas></div>
       </div>
-      <div class="panel">
+
+      <div class="surface panel">
         <h3>Evolução Mensal (Criados)</h3>
-        <canvas id="chart-linha" height="260"></canvas>
+        <div class="chart-box"><canvas id="chart-linha" class="chart"></canvas></div>
       </div>
-      <div class="panel">
+
+      <div class="surface panel">
         <h3>Funil Geral (Etapas do CRM)</h3>
-        <canvas id="chart-funil" height="260"></canvas>
+        <div class="chart-box"><canvas id="chart-funil" class="chart"></canvas></div>
       </div>
-    </div>
+    </section>
 
     <!-- LISTAS INFORMATIVAS -->
-    <h3 style="margin-top:24px;">Listas informativas</h3>
-    <div class="toolbar">
-      <button data-list="fields">Campos</button>
-      <button data-list="events">Eventos</button>
-      <button data-list="pipelines">Pipelines</button>
-      <button data-list="sources">Fontes</button>
-      <button data-list="users">Vendedores</button>
-      <button data-list="tags">Tags</button>
-      <button data-list="calls">Chamadas</button>
-      <button id="btn-recarregar">Recarregar</button>
-    </div>
-    <pre id="box-lista" aria-live="polite"></pre>
+    <section>
+      <h3 style="margin-top:26px">Listas informativas</h3>
+      <div class="toolbar">
+        <button class="btn" data-list="fields">Campos</button>
+        <button class="btn" data-list="events">Eventos</button>
+        <button class="btn" data-list="pipelines">Pipelines</button>
+        <button class="btn" data-list="sources">Fontes</button>
+        <button class="btn" data-list="users">Vendedores</button>
+        <button class="btn" data-list="tags">Tags</button>
+        <button class="btn" data-list="calls">Chamadas</button>
+        <button class="btn" id="btn-recarregar">Recarregar</button>
+      </div>
+      <pre id="box-lista" aria-live="polite"></pre>
+    </section>
 
-    <footer>Grazziotin Consultoria Comercial — MVP Kommo &middot; <span class="muted">HTML estático para GitHub Pages</span></footer>
+    <footer>Grazziotin Consultoria Comercial • design minimalista & luxuoso</footer>
   </div>
 
 <script>
 /* =======================
    CONFIGURE AQUI
    ======================= */
-const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwIJaikbGhLnyQQD61hi5wQ-mJ86r3coq4djRD644P8lfJfS1DpxnDQpEofbQIBi71_/exec"; // <— substitua!
+const GAS_ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwIJaikbGhLnyQQD61hi5wQ-mJ86r3coq4djRD644P8lfJfS1DpxnDQpEofbQIBi71_/exec"; // <— troque!
 
 /* =======================
    HELPERS
    ======================= */
 async function fetchJSON(url){
-  const r = await fetch(url, {cache:"no-store"});
+  const r = await fetch(url,{cache:"no-store"});
   const text = await r.text();
-  // debug opcional:
-  // console.log("Resposta bruta do GAS:", text.slice(0,300));
-  if(!r.ok) throw new Error("HTTP "+r.status+" — "+text.slice(0,200));
-  let json; try{ json = JSON.parse(text); }catch(e){ throw new Error("Resposta não é JSON (verifique permissões do Web App)."); }
+  if(!r.ok) throw new Error("HTTP "+r.status+" — "+text.slice(0,120));
+  let json; try{ json = JSON.parse(text); }catch(e){ throw new Error("Resposta não é JSON. Verifique permissões do Web App."); }
   return json;
 }
 const toBRL = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-const monthKey = iso => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
+const monthKey = iso => { const d=new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
 const groupBy = (arr,fn) => arr.reduce((m,x)=>((m[fn(x)]=m[fn(x)]||[]).push(x),m),{});
 const tagsToArray = csv => (csv||"").split(",").map(s=>s.trim()).filter(Boolean);
+const norm = v => String(v ?? "").toLowerCase().trim();
 
 /* =======================
-   CONSTANTES DO DASH
+   PLUGIN DE SOMBRA 3D (Chart.js)
    ======================= */
-const OUTBOUND_STEPS = [
-  "Prospects",
-  "Contato estabelecido",
-  "Contato decisor",
-  "Qualificado",
-  "Reunião análise",
-  "Proposta apresentada",
-  "Ganho"
-];
+const shadow3D = {
+  id: 'shadow3D',
+  beforeDatasetsDraw(chart, args, pluginOptions) {
+    const {ctx, chartArea} = chart;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.35)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 14;
+    ctx.shadowOffsetX = 0;
+  },
+  afterDatasetsDraw(chart) { chart.ctx.restore(); }
+};
 
 /* =======================
    CARREGAR LEADS
@@ -128,7 +191,7 @@ async function loadLeads(periodoDias=90){
   const url = `${GAS_ENDPOINT_URL}?periodo=${Math.min(periodoDias,90)}`;
   const json = await fetchJSON(url);
   const rows = json.dados || [];
-  // Estrutura: [id, created_atISO, vendedor, valor, etapa, tagsCSV, source]
+  // [id, created_atISO, vendedor, valor, etapa, tagsCSV, source]
   return rows.map(r => ({
     id: r[0],
     created_at: r[1],
@@ -145,83 +208,109 @@ async function loadLeads(periodoDias=90){
    ======================= */
 function renderCards(leads){
   const total = leads.length;
-  const ganhosLeads = leads.filter(l => l.etapa.toLowerCase().includes("ganho") || l.tags.toLowerCase().includes("ganho"));
-  const taxa = total ? Math.round((ganhosLeads.length/total)*100) : 0;
-  const totalGanho = ganhosLeads.reduce((s,l)=>s+l.valor,0);
-
+  const ganhos = leads.filter(l => l.etapa.toLowerCase().includes("ganho") || l.tags.toLowerCase().includes("ganho"));
+  const taxa = total ? Math.round((ganhos.length/total)*100) : 0;
+  const totalGanho = ganhos.reduce((s,l)=>s+l.valor,0);
   document.getElementById("card-total").textContent = total;
   document.getElementById("card-conv").textContent = taxa + "%";
-  document.getElementById("card-avg").textContent = "-"; // sem data de fechamento no MVP
+  document.getElementById("card-avg").textContent = "-";
   document.getElementById("card-ganho").textContent = toBRL(totalGanho);
 }
 
 /* =======================
-   GRÁFICOS (Chart.js)
+   CHART FACTORIES
    ======================= */
 let CHARTS = {};
 function destroyChart(id){ if(CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; } }
 
-function chartBarH(id, labels, data, label="Leads"){
+const palette = {
+  bar:   'rgba(148, 163, 184, .85)', /* slate-400 */
+  bar2:  'rgba(203, 213, 225, .85)', /* slate-300 */
+  line:  'rgba(226, 232, 240, .9)',  /* slate-200 */
+  grid:  '#222735',
+  axis:  '#8993a8'
+};
+
+function baseOptions() {
+  return {
+    responsive:true, maintainAspectRatio:false, animation:false,
+    plugins: { legend: { display:false } },
+    scales: {
+      x: { grid: { color: palette.grid }, ticks: { color: palette.axis } },
+      y: { grid: { color: palette.grid }, ticks: { color: palette.axis } }
+    }
+  };
+}
+
+function chartBarH(id, labels, data, color=palette.bar){
   destroyChart(id);
   CHARTS[id] = new Chart(document.getElementById(id), {
     type: "bar",
-    data: { labels, datasets: [{ label, data }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false }
+    plugins: [shadow3D],
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 8 }] },
+    options: { ...baseOptions(), indexAxis: "y" }
   });
 }
-function chartBar(id, labels, data, label="Leads"){
+
+function chartBar(id, labels, data, color=palette.bar){
   destroyChart(id);
   CHARTS[id] = new Chart(document.getElementById(id), {
     type: "bar",
-    data: { labels, datasets: [{ label, data }] },
-    options: { responsive: true, maintainAspectRatio: false }
+    plugins: [shadow3D],
+    data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 8 }] },
+    options: baseOptions()
   });
 }
-function chartLine(id, labels, data, label="Criados"){
+
+function chartLine(id, labels, data, color=palette.line){
   destroyChart(id);
   CHARTS[id] = new Chart(document.getElementById(id), {
     type: "line",
-    data: { labels, datasets: [{ label, data }] },
-    options: { responsive: true, maintainAspectRatio: false }
+    data: { labels, datasets: [{ data, borderColor: color, tension:.35, fill:false, pointRadius:2 }] },
+    options: baseOptions()
   });
 }
 
 /* =======================
-   RENDERIZAÇÃO
+   RENDER
    ======================= */
-function renderOutbound(leads){
-  // aceita "Google sheet" (inglês) e "Planilha do Google" (pt)
-  const norm = v => String(v ?? "").toLowerCase().trim();
-  const matchSource = s => s.includes("google sheet") || s.includes("planilha do google");
-  const sourceFilter = l => matchSource(norm(l.source));
-  const outbound = leads.filter(sourceFilter);
+const OUTBOUND_STEPS = [
+  "Prospects","Contato estabelecido","Contato decisor","Qualificado",
+  "Reunião análise","Proposta apresentada","Ganho"
+];
 
-  const counts = OUTBOUND_STEPS.map(step => {
-    const sLower = step.toLowerCase();
-    return outbound.filter(l => tagsToArray(l.tags).map(t=>t.toLowerCase()).includes(sLower)).length;
+function renderOutbound(leads){
+  // aceita "Google sheet" e "Planilha do Google"
+  const outbound = leads.filter(l => {
+    const s = norm(l.source);
+    return s.includes("google sheet") || s.includes("planilha do google");
   });
-  chartBarH("chart-outbound", OUTBOUND_STEPS, counts, "Outbound");
+  const counts = OUTBOUND_STEPS.map(step => {
+    const tag = step.toLowerCase();
+    return outbound.filter(l => tagsToArray(l.tags).map(t=>t.toLowerCase()).includes(tag)).length;
+  });
+  chartBarH("chart-outbound", OUTBOUND_STEPS, counts);
 }
 
 function renderBarrasVendedores(leads){
   const byVend = groupBy(leads, l => l.vendedor || "—");
   const labels = Object.keys(byVend);
   const data = labels.map(k => byVend[k].length);
-  chartBar("chart-vendedores", labels, data, "Leads");
+  chartBar("chart-vendedores", labels, data, palette.bar2);
 }
 
 function renderLinhaTempo(leads){
   const byMonth = groupBy(leads, l => monthKey(l.created_at));
   const labels = Object.keys(byMonth).sort();
   const data = labels.map(k => byMonth[k].length);
-  chartLine("chart-linha", labels, data, "Criados");
+  chartLine("chart-linha", labels, data);
 }
 
 function renderFunilGeral(leads){
   const byStage = groupBy(leads, l => l.etapa || "Sem etapa");
   const labels = Object.keys(byStage);
   const data = labels.map(k => byStage[k].length);
-  chartBarH("chart-funil", labels, data, "Etapas");
+  chartBarH("chart-funil", labels, data);
 }
 
 /* =======================
@@ -248,7 +337,7 @@ async function boot(){
     renderLinhaTempo(leads);
     renderFunilGeral(leads);
   }catch(err){
-    alert("Erro ao carregar dashboard: " + err.message + "\nVerifique a URL do Web App e as permissões (Qualquer pessoa).");
+    alert("Erro ao carregar dashboard: " + err.message);
     console.error(err);
   }
 }
