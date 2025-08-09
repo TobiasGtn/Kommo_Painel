@@ -127,7 +127,7 @@ async function loadLeads(periodoDias=90){
     valor: Number(r[3]) || 0,
     etapa: r[4] || "",
     tags: r[5] || "",
-    source: r[6] || ""
+    source: String(r[6] ?? "")
   }));
 }
 
@@ -182,8 +182,9 @@ function chartLine(id, labels, data, label="Criados"){
    ======================= */
 function renderOutbound(leads){
   // aceita "Google sheet" (inglês) e "Planilha do Google" (pt)
+  const norm = v => String(v ?? "").toLowerCase().trim();
   const matchSource = s => s.includes("google sheet") || s.includes("planilha do google");
-  const sourceFilter = l => matchSource((l.source||"").toLowerCase());
+  const sourceFilter = l => matchSource(norm(l.source));
   const outbound = leads.filter(sourceFilter);
 
   const counts = OUTBOUND_STEPS.map(step => {
