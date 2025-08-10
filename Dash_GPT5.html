@@ -11,8 +11,7 @@
     --gap:20px; --radius:14px;
     --shadow: 0 10px 30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.25);
     --card-shadow: 0 12px 24px rgba(0,0,0,.35);
-    --bar:#cbd5e1; --bar2:#94a3b8; --barValue:#e2e8f0;
-    --axis:#aeb6c5; --grid:#222735;
+    --bar:#cbd5e1; --bar2:#94a3b8;
   }
   *{box-sizing:border-box}
   body{
@@ -30,46 +29,60 @@
   h1{font-size:18px;margin:0}
   .muted{color:var(--muted)}
   .surface{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
   /* filtros */
   .filters{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0 12px}
   @media (min-width:980px){ .filters{grid-template-columns:1fr 1fr 1fr} }
   .field{display:flex;flex-direction:column;gap:6px}
   .label{font-size:.9rem;color:var(--muted)}
-  .select,.input{appearance:none;background:#0f141e;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;min-height:40px}
+  .select{appearance:none;background:#0f141e;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;min-height:40px}
   .period-row{display:flex;gap:8px;align-items:center}
   .icon-btn{border:1px solid var(--line);background:#0f141e;color:var(--ink);border-radius:10px;padding:10px 12px;cursor:pointer}
-  .daterange{display:none;gap:8px}
-  .daterange.show{display:flex}
+
+  /* calendário overlay (range) */
+  .cal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:50}
+  .cal{background:#0f141e;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px;width:320px;color:var(--ink)}
+  .cal header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .cal header button{border:1px solid var(--line);background:#0f141e;color:var(--ink);border-radius:8px;padding:6px 8px;cursor:pointer}
+  .cal .month{font-weight:600}
+  .cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
+  .cal .dow{font-size:.8rem;color:var(--muted);text-align:center}
+  .cal .day{height:34px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;border:1px solid transparent}
+  .cal .day:hover{background:#151b28}
+  .cal .day.disabled{opacity:.35;pointer-events:none}
+  .cal .day.sel{background:#1f2937;border-color:#334155}
+  .cal .day.range{background:#1b2433}
+  .cal footer{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+  .cal footer button{border:1px solid var(--line);background:#131a26;color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+
   /* cards */
   .cards{display:grid;gap:14px;margin:14px 0 20px}
-  @media (min-width:980px){
-    .cards{grid-template-columns:1fr 1fr} /* primeira linha: 2 grandes */
-    .cards-row2{grid-template-columns:repeat(3,1fr)} /* segunda linha: 3 */
-  }
+  @media (min-width:980px){ .cards{grid-template-columns:1fr 1fr} }
+  .cards-row2{display:grid;gap:14px;margin:0 0 20px}
+  @media (min-width:980px){ .cards-row2{grid-template-columns:repeat(3,1fr)} }
   .card{padding:16px 16px 14px;box-shadow:var(--card-shadow)}
   .big-metric{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
   .big-left{font:700 30px/1.2 system-ui}
   .big-right{font:600 22px/1.2 system-ui;color:#c7cfdb}
-  .subtle{font-size:.92rem;color:var(--muted);margin-top:6px}
   .metric{display:flex;flex-direction:column;gap:4px}
   .metric .value{font:600 20px/1.2 system-ui}
+
   /* grid de gráficos */
   .grid{display:grid;gap:var(--gap);grid-template-columns:1fr}
   @media (min-width:980px){ .grid{grid-template-columns:1fr 1fr} }
   .panel{padding:16px;display:flex;flex-direction:column;gap:10px}
   .panel h3{margin:0 0 4px 0;font-size:16px;font-weight:600}
   .chart-box{position:relative;width:100%;height:360px;border-radius:12px;overflow:hidden}
-  .chart-box.tall{height:auto} /* altura dinâmica para o funil custom */
+  .chart-box.tall{height:auto}
   canvas.chart{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
-  /* sem grade nos 2 gráficos de barras */
-  .nogrid .chartjs-render-monitor{}
+
   footer{margin:24px 0 8px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><div class="dot"></div><h1>Dashboard Grazziotin — <span class="muted">MVP Kommo</span></h1></div>
+    <div class="brand"><div class="dot"></div><h1>Dashboard Grazziotin Consultoria — <span class="muted">Kommo CRM</span></h1></div>
     <div class="muted">Máx. 90 dias</div>
   </header>
 
@@ -83,14 +96,10 @@
           <option value="ontem">Ontem</option>
           <option value="ultima-semana" selected>Última semana</option>
           <option value="ultimo-mes">Último mês</option>
+          <option value="max">Máximo</option>
+          <option value="custom">Personalizado</option>
         </select>
-        <!-- botão de calendário -->
         <button id="btn-cal" class="icon-btn" title="Escolher intervalo">📅</button>
-      </div>
-      <div id="dr" class="daterange">
-        <input id="dt-inicio" type="date" class="input" />
-        <input id="dt-fim" type="date" class="input" />
-        <button id="btn-aplicar" class="icon-btn">Aplicar</button>
       </div>
     </div>
 
@@ -109,9 +118,26 @@
     </div>
   </section>
 
+  <!-- Calendário overlay -->
+  <div id="cal-overlay" class="cal-overlay" role="dialog" aria-modal="true">
+    <div class="cal">
+      <header>
+        <button id="cal-prev" aria-label="Mês anterior">◀</button>
+        <div class="month" id="cal-month">Mês</div>
+        <button id="cal-next" aria-label="Próximo mês">▶</button>
+      </header>
+      <div class="grid" id="cal-grid">
+        <div class="dow">S</div><div class="dow">T</div><div class="dow">Q</div><div class="dow">Q</div><div class="dow">S</div><div class="dow">S</div><div class="dow">D</div>
+      </div>
+      <footer>
+        <button id="cal-cancel">Cancelar</button>
+        <button id="cal-ok">OK</button>
+      </footer>
+    </div>
+  </div>
+
   <!-- CARDS -->
   <section class="cards">
-    <!-- linha 1: dois grandes -->
     <div class="surface card">
       <div class="big-metric">
         <div>
@@ -132,8 +158,7 @@
     </div>
   </section>
 
-  <section class="cards cards-row2">
-    <!-- linha 2: três médios -->
+  <section class="cards-row2">
     <div class="surface card metric">
       <div class="label">Todos os Leads</div>
       <div class="value" id="card-total">—</div>
@@ -150,28 +175,24 @@
 
   <!-- GRÁFICOS -->
   <section class="grid">
-    <!-- Prospecção Ativa -->
     <div class="surface panel">
       <h3>Dados de Prospecção Ativa</h3>
       <div id="box-prosp" class="chart-box tall"><canvas id="chart-prospeccao" class="chart"></canvas></div>
     </div>
 
-    <!-- Vendas por canal de entrada -->
     <div class="surface panel">
       <h3>Vendas por canal de entrada</h3>
-      <div class="chart-box nogrid"><canvas id="chart-canais" class="chart"></canvas></div>
+      <div class="chart-box"><canvas id="chart-canais" class="chart"></canvas></div>
     </div>
 
-    <!-- Chamadas (linha do tempo) -->
     <div class="surface panel">
       <h3>Chamadas realizadas</h3>
       <div class="chart-box"><canvas id="chart-chamadas" class="chart"></canvas></div>
     </div>
 
-    <!-- Vendas por usuário -->
     <div class="surface panel">
       <h3>Vendas por usuário</h3>
-      <div class="chart-box nogrid"><canvas id="chart-usuarios" class="chart"></canvas></div>
+      <div class="chart-box"><canvas id="chart-usuarios" class="chart"></canvas></div>
     </div>
   </section>
 
@@ -198,55 +219,17 @@ const toBRL = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",curre
 const norm  = v => String(v ?? "").toLowerCase().trim();
 const tagsToArray = csv => (csv||"").split(",").map(s=>s.trim()).filter(Boolean);
 const groupBy = (arr, fn) => arr.reduce((m,x)=>((m[fn(x)]=m[fn(x)]||[]).push(x),m),{});
+const ddmm = d => String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
 
 /* =======================
-   PERÍODO / INTERVALOS
-   ======================= */
-let customRange = null; // {start: Date, end: Date} quando usar calendário
-
-function getRange(choice){
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(today);
-  if (choice === "hoje")  return {start: today, end: new Date(today.getTime()+86399999)};
-  if (choice === "ontem"){ d.setDate(d.getDate()-1); return {start: d, end: new Date(d.getTime()+86399999)}; }
-  if (choice === "ultima-semana"){
-    // última semana COMPLETA (seg-dom) anterior à semana atual
-    const now = new Date();
-    const day = (now.getDay()+6)%7; // 0=segunda
-    const lastMon = new Date(now); lastMon.setDate(now.getDate()-day-7); lastMon.setHours(0,0,0,0);
-    const lastSun = new Date(lastMon); lastSun.setDate(lastMon.getDate()+6); lastSun.setHours(23,59,59,999);
-    return {start: lastMon, end: lastSun};
-  }
-  if (choice === "ultimo-mes"){
-    const now = new Date();
-    const firstThis = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthEnd = new Date(firstThis-1);
-    const firstLast = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
-    firstLast.setHours(0,0,0,0); lastMonthEnd.setHours(23,59,59,999);
-    return {start: firstLast, end: lastMonthEnd};
-  }
-  if (choice === "custom" && customRange) return customRange;
-  // fallback: 7 dias rolling
-  const start = new Date(); start.setDate(start.getDate()-6); start.setHours(0,0,0,0);
-  const end   = new Date(); end.setHours(23,59,59,999);
-  return {start, end};
-}
-function inRange(iso, range){
-  const t = new Date(iso).getTime();
-  return t >= range.start.getTime() && t <= range.end.getTime();
-}
-
-/* =======================
-   CARGA DE DADOS
+   CARGA (sempre 90 dias)
    ======================= */
 async function loadLeads(){
-  // sempre buscamos 90 dias e filtramos no front por range
   const json = await fetchJSON(`${GAS_ENDPOINT_URL}?periodo=90`);
   const rows = json.dados || [];
-  // [0]id,[1]created_at,[2]vendedor,[3]valor,[4]etapa,[5]tags,[6]source,[7]pipeline_name,[8]canal_entrada,[9]closed_at
   return rows.map(r => ({
     id:r[0], created_at:r[1], vendedor:r[2]||"—",
-    valor:Number(r[3])||0,  etapa:r[4]||"", tags:r[5]||"",
+    valor:Number(r[3])||0, etapa:r[4]||"", tags:r[5]||"",
     source:String(r[6]??""), pipeline:String(r[7]??""), canal:String(r[8]??""),
     closed_at:r[9]||""
   }));
@@ -262,49 +245,201 @@ async function loadCalls(){
 }
 
 /* =======================
-   FILTROS (UI)
+   ESTADO GLOBAL
+   ======================= */
+let ALL_LEADS = [];
+let ALL_CALLS = [];
+let ALL_USERS = [];    // nomes (para exibir zerados)
+let ALL_CHANNELS = []; // canais (para exibir zerados)
+
+/* =======================
+   FILTROS / PERÍODO
    ======================= */
 const fPeriodo = document.getElementById("f-periodo");
 const fUsuario = document.getElementById("f-usuario");
 const fFunil   = document.getElementById("f-funil");
 const btnCal   = document.getElementById("btn-cal");
-const drBox    = document.getElementById("dr");
-const dtIni    = document.getElementById("dt-inicio");
-const dtFim    = document.getElementById("dt-fim");
-const btnAplicar = document.getElementById("btn-aplicar");
 
-btnCal.addEventListener("click", ()=> drBox.classList.toggle("show"));
-btnAplicar.addEventListener("click", ()=>{
-  if (dtIni.value && dtFim.value){
-    const s = new Date(dtIni.value); s.setHours(0,0,0,0);
-    const e = new Date(dtFim.value); e.setHours(23,59,59,999);
-    customRange = {start:s, end:e};
-    fPeriodo.value = "custom";
-    applyAll();
+let customRange = null; // {start, end}
+
+const PERIOD_LABELS = {
+  "hoje":"Hoje",
+  "ontem":"Ontem",
+  "ultima-semana":"Última semana",
+  "ultimo-mes":"Último mês",
+  "max":"Máximo",
+  "custom":"Personalizado"
+};
+
+function computeMaxRange(){
+  const dates = [];
+  ALL_LEADS.forEach(l => { if (l.created_at) dates.push(new Date(l.created_at).getTime()); if (l.closed_at) dates.push(new Date(l.closed_at).getTime()); });
+  ALL_CALLS.forEach(c => { if (c.created_at) dates.push(new Date(c.created_at).getTime()); });
+  if (!dates.length){
+    const today = new Date(); today.setHours(0,0,0,0);
+    return { start: today, end: new Date(today.getTime()+86399999) };
   }
-});
+  const minT = Math.min(...dates), maxT = Math.max(...dates);
+  const start = new Date(minT); start.setHours(0,0,0,0);
+  const end = new Date(maxT);  end.setHours(23,59,59,999);
+  return { start, end };
+}
 
-async function hydrateFilters(leads){
-  // Usuários (da planilha)
+function getRange(choice){
+  if (choice === "custom" && customRange) return customRange;
+  if (choice === "max") return computeMaxRange();
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (choice === "hoje")  return {start: today, end: new Date(today.getTime()+86399999)};
+  if (choice === "ontem"){ const d=new Date(today); d.setDate(d.getDate()-1); return {start:d, end:new Date(d.getTime()+86399999)}; }
+  if (choice === "ultima-semana"){
+    // última semana COMPLETA (seg→dom) anterior à atual
+    const now = new Date();
+    const day = (now.getDay()+6)%7; // 0=seg
+    const lastMon = new Date(now); lastMon.setDate(now.getDate()-day-7); lastMon.setHours(0,0,0,0);
+    const lastSun = new Date(lastMon); lastSun.setDate(lastMon.getDate()+6); lastSun.setHours(23,59,59,999);
+    return {start:lastMon, end:lastSun};
+  }
+  if (choice === "ultimo-mes"){
+    const now = new Date();
+    const firstThis = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthEnd = new Date(firstThis-1);
+    const firstLast = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
+    firstLast.setHours(0,0,0,0); lastMonthEnd.setHours(23,59,59,999);
+    return {start:firstLast, end:lastMonthEnd};
+  }
+  // fallback: rolling 7
+  const s = new Date(); s.setDate(s.getDate()-6); s.setHours(0,0,0,0);
+  const e = new Date(); e.setHours(23,59,59,999);
+  return {start:s, end:e};
+}
+
+function setPeriodSummaryLabel(choice, range){
+  // atualiza o texto da opção selecionada para incluir "dd/mm a dd/mm"
+  const startTxt = ddmm(range.start);
+  const endTxt   = ddmm(range.end);
+  const opts = Array.from(fPeriodo.options);
+  opts.forEach(opt => {
+    const base = PERIOD_LABELS[opt.value] || opt.textContent;
+    if (opt.value === choice){
+      opt.textContent = `${base} — ${startTxt} a ${endTxt}`;
+    } else {
+      opt.textContent = base;
+    }
+  });
+}
+
+async function hydrateFilters(){
   const users = await loadList("users");
   const uRows = users.dados || [];
   fUsuario.innerHTML = `<option value="">Todos</option>` +
     uRows.map(r => `<option value="${String(r[1]).replace(/"/g,'&quot;')}">${r[1]}</option>`).join("");
 
-  // Funis (da planilha)
   const pipes = await loadList("pipelines");
   const pRows = pipes.dados || [];
   const names = Array.from(new Set(pRows.map(r => r[1]).filter(Boolean)));
   fFunil.innerHTML = `<option value="">Todos</option>` +
     names.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}">${n}</option>`).join("");
 
-  // período padrão: Última semana completa
-  fPeriodo.value = "ultima-semana";
+  fPeriodo.value = "ultima-semana"; // padrão
 }
 
 /* =======================
-   CARDS
+   CALENDÁRIO (RANGE)
    ======================= */
+let calState = { visible:false, cursor:new Date(), start:null, end:null };
+const calOverlay = document.getElementById("cal-overlay");
+const calMonthEl = document.getElementById("cal-month");
+const calGrid = document.getElementById("cal-grid");
+const btnPrev = document.getElementById("cal-prev");
+const btnNext = document.getElementById("cal-next");
+const btnOk   = document.getElementById("cal-ok");
+const btnCancel = document.getElementById("cal-cancel");
+
+btnCal.addEventListener("click", ()=> openCalendar(customRange));
+btnPrev.addEventListener("click", ()=>{ calState.cursor.setMonth(calState.cursor.getMonth()-1); renderCalendar(); });
+btnNext.addEventListener("click", ()=>{ calState.cursor.setMonth(calState.cursor.getMonth()+1); renderCalendar(); });
+btnCancel.addEventListener("click", closeCalendar);
+btnOk.addEventListener("click", ()=>{
+  if (!calState.start || !calState.end) return;
+  calState.start.setHours(0,0,0,0);
+  calState.end.setHours(23,59,59,999);
+  customRange = { start: new Date(calState.start), end: new Date(calState.end) };
+  fPeriodo.value = "custom";
+  closeCalendar();
+  applyAll();
+});
+
+function openCalendar(initialRange){
+  calState.visible = true;
+  calOverlay.style.display = "flex";
+  calState.cursor = (initialRange?.start) ? new Date(initialRange.start) : new Date();
+  calState.cursor.setDate(1);
+  calState.start = initialRange?.start ? new Date(initialRange.start) : null;
+  calState.end   = initialRange?.end   ? new Date(initialRange.end)   : null;
+  renderCalendar();
+}
+function closeCalendar(){ calState.visible=false; calOverlay.style.display="none"; }
+
+function renderCalendar(){
+  const y = calState.cursor.getFullYear();
+  const m = calState.cursor.getMonth();
+  calMonthEl.textContent = calState.cursor.toLocaleDateString("pt-BR",{month:"long", year:"numeric"});
+  // remove dias anteriores (mantém os DOW)
+  [...calGrid.querySelectorAll(".day")].forEach(n=>n.remove());
+
+  const firstDay = new Date(y, m, 1);
+  const lastDay  = new Date(y, m+1, 0);
+  const startIdx = firstDay.getDay(); // 0 dom..6 sáb
+
+  for (let i=0; i<startIdx; i++){
+    const dummy = document.createElement("div");
+    dummy.className = "day disabled";
+    calGrid.appendChild(dummy);
+  }
+
+  for (let d=1; d<=lastDay.getDate(); d++){
+    const cell = document.createElement("div");
+    cell.className = "day";
+    cell.textContent = d;
+    const cellDate = new Date(y, m, d); cellDate.setHours(0,0,0,0);
+
+    const s = calState.start ? new Date(calState.start) : null;
+    const e = calState.end ? new Date(calState.end) : null;
+    if (s && sameDay(cellDate, s)) cell.classList.add("sel");
+    if (e && sameDay(cellDate, e)) cell.classList.add("sel");
+    if (s && e && cellDate > s && cellDate < e) cell.classList.add("range");
+
+    cell.addEventListener("click", ()=>{
+      if (!calState.start || (calState.start && calState.end)){
+        calState.start = cellDate; calState.end = null;
+      } else {
+        if (cellDate < calState.start){ calState.end = calState.start; calState.start = cellDate; }
+        else { calState.end = cellDate; }
+      }
+      renderCalendar();
+    });
+
+    calGrid.appendChild(cell);
+  }
+}
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+/* =======================
+   FILTRAGEM E MÉTRICAS
+   ======================= */
+function inRange(iso, range){
+  const t = new Date(iso).getTime();
+  return t >= range.start.getTime() && t <= range.end.getTime();
+}
+function filtrar(leads, calls, range, usuario, funil){
+  let L = leads.filter(l => inRange(l.created_at, range));
+  if (usuario) L = L.filter(l => l.vendedor === usuario);
+  if (funil)   L = L.filter(l => l.pipeline === funil);
+  let C = calls.filter(c => inRange(c.created_at, range));
+  if (usuario) C = C.filter(c => c.created_by === usuario);
+  return { leads:L, calls:C };
+}
 function calcularCards(leads){
   const total = leads.length;
   const won  = leads.filter(l => norm(l.etapa).includes("ganho"));
@@ -312,20 +447,18 @@ function calcularCards(leads){
   const valorWon  = won.reduce((s,l)=>s+l.valor,0);
   const valorLost = lost.reduce((s,l)=>s+l.valor,0);
   const ticket    = won.length ? (valorWon / won.length) : 0;
-
   const cycles = won.filter(l => l.closed_at).map(l => (new Date(l.closed_at) - new Date(l.created_at)) / (24*3600*1000));
   const ciclo  = cycles.length ? Math.round(cycles.reduce((a,b)=>a+b,0) / cycles.length) : "-";
-
   return { total, wonQ: won.length, wonV: valorWon, lostQ: lost.length, lostV: valorLost, ticket, ciclo };
 }
 function renderCards(m){
-  document.getElementById("ganhos-qtd").textContent  = m.wonQ;
-  document.getElementById("ganhos-valor").textContent= toBRL(m.wonV);
-  document.getElementById("perdas-qtd").textContent  = m.lostQ;
-  document.getElementById("perdas-valor").textContent= toBRL(m.lostV);
-  document.getElementById("card-total").textContent  = m.total;
-  document.getElementById("card-ticket").textContent = toBRL(m.ticket);
-  document.getElementById("card-ciclo").textContent  = String(m.ciclo);
+  document.getElementById("ganhos-qtd").textContent   = m.wonQ;
+  document.getElementById("ganhos-valor").textContent = toBRL(m.wonV);
+  document.getElementById("perdas-qtd").textContent   = m.lostQ;
+  document.getElementById("perdas-valor").textContent = toBRL(m.lostV);
+  document.getElementById("card-total").textContent   = m.total;
+  document.getElementById("card-ticket").textContent  = toBRL(m.ticket);
+  document.getElementById("card-ciclo").textContent   = String(m.ciclo);
 }
 
 /* =======================
@@ -336,27 +469,20 @@ function destroy(id){ if(CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; }
 const baseOpts = {
   responsive:true, maintainAspectRatio:false, animation:false,
   plugins:{ legend:{display:false} },
-  scales:{
-    x:{ grid:{color:"#222735"}, ticks:{color:"#8993a8"} },
-    y:{ grid:{color:"#222735"}, ticks:{color:"#8993a8"} }
-  }
+  scales:{ x:{ grid:{color:"#222735"}, ticks:{color:"#8993a8"} }, y:{ grid:{color:"#222735"}, ticks:{color:"#8993a8"} } }
 };
-// plugin para escrever valores nas barras (ou fora se curta)
 const valueLabels = {
   id:'valueLabels',
-  afterDatasetsDraw(chart, args, pluginOptions){
+  afterDatasetsDraw(chart){
     const {ctx} = chart;
-    chart.data.datasets.forEach((dataset, di)=>{
+    chart.data.datasets.forEach((ds, di)=>{
       const meta = chart.getDatasetMeta(di);
       meta.data.forEach((bar, i)=>{
-        const val = dataset.data[i];
-        if (val == null) return;
-        const label = (dataset.label && dataset.label.includes("Valor")) ? toBRL(val*1000) : String(val);
+        const v = ds.data[i];
+        if (v == null) return;
+        const label = (ds.label && ds.label.includes("Valor")) ? toBRL(v*1000) : String(v);
         const {x,y} = bar.tooltipPosition();
-        ctx.save();
-        ctx.font = "600 12px system-ui";
-        ctx.fillStyle = "#e8eaee";
-        // posição: se a barra for curta, escreve à frente
+        ctx.save(); ctx.font = "600 12px system-ui"; ctx.fillStyle = "#e8eaee";
         const w = (bar.width || (bar.base - bar.x));
         if (w < 40) { ctx.textAlign="left";  ctx.fillText(label, bar.x + 6, y+4); }
         else        { ctx.textAlign="right"; ctx.fillText(label, bar.x + w - 6, y+4); }
@@ -367,11 +493,14 @@ const valueLabels = {
 };
 
 /* =======================
-   PROSPECÇÃO ATIVA — Funil custom
+   PROSPECÇÃO ATIVA (canvas) — números após as barras
    ======================= */
+const OUTBOUND_STEPS = [
+  "Prospects","Contato estabelecido","Contato decisor","Qualificado",
+  "Reunião análise","Proposta apresentada","Ganho"
+];
 function drawProspeccao(canvas, steps, counts){
   const ctx = canvas.getContext("2d");
-  // altura dinâmica: cada etapa ocupa ~ rowH+gap + %bar
   const rowH=42, gap=24, percH=12, top=24, bottom=24;
   const totalH = top + bottom + steps.length*(rowH+gap) + (steps.length-1)*(percH+6);
   const W = canvas.width  = canvas.clientWidth;
@@ -408,13 +537,7 @@ function drawProspeccao(canvas, steps, counts){
     ctx.textBaseline = "middle";
     ctx.fillText(label, x - 16, y + h/2);
 
-    // número alinhado à esquerda da barra
-    ctx.fillStyle = "#c7cfdb";
-    ctx.font = "600 16px system-ui";
-    ctx.textAlign = "left";
-    ctx.fillText(String(cnt), x + 10, y + h/2);
-
-    // barra com sombra e chanfrada
+    // barra chanfrada com sombra
     shadow();
     ctx.fillStyle = barColor;
     const tip = 16;
@@ -428,16 +551,26 @@ function drawProspeccao(canvas, steps, counts){
     ctx.fill();
     clearShadow();
 
-    // aresta iluminada
-    ctx.strokeStyle = edgeColor;
-    ctx.lineWidth = 1;
+    // aresta
+    ctx.strokeStyle = edgeColor; ctx.lineWidth=1;
     ctx.beginPath();
     ctx.moveTo(x + bw - tip, y);
     ctx.lineTo(x + bw, y + h/2);
     ctx.lineTo(x + bw - tip, y + h);
     ctx.stroke();
 
-    // barra percentual abaixo
+    // número alinhado à esquerda da barra (DESENHADO DEPOIS DA BARRA)
+    ctx.fillStyle = "#0f1115";            // contrasta com a barra clara
+    ctx.font = "700 16px system-ui";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    // leve contorno para legibilidade
+    ctx.strokeStyle = "rgba(255,255,255,.35)";
+    ctx.lineWidth = 2;
+    ctx.strokeText(String(cnt), x + 10, y + h/2);
+    ctx.fillText(String(cnt), x + 10, y + h/2);
+
+    // barra percentual
     if (i>0){
       const prev = counts[i-1] || 0;
       const perc = prev ? Math.round((cnt/prev)*100) : 0;
@@ -455,22 +588,8 @@ function drawProspeccao(canvas, steps, counts){
 }
 
 /* =======================
-   RENDER
+   RENDERIZAÇÕES
    ======================= */
-const OUTBOUND_STEPS = [
-  "Prospects","Contato estabelecido","Contato decisor","Qualificado",
-  "Reunião análise","Proposta apresentada","Ganho"
-];
-
-function filtrar(leads, calls, range, usuario, funil){
-  let L = leads.filter(l => inRange(l.created_at, range));
-  if (usuario) L = L.filter(l => l.vendedor === usuario);
-  if (funil)   L = L.filter(l => l.pipeline === funil);
-  let C = calls.filter(c => inRange(c.created_at, range));
-  if (usuario) C = C.filter(c => c.created_by === usuario);
-  return { leads:L, calls:C };
-}
-
 function renderProspeccaoAtiva(leads){
   const outbound = leads.filter(l => {
     const s = norm(l.source);
@@ -480,17 +599,15 @@ function renderProspeccaoAtiva(leads){
     const tag = step.toLowerCase();
     return outbound.filter(l => tagsToArray(l.tags).map(t=>t.toLowerCase()).includes(tag)).length;
   });
-  // ajusta a altura do container para comportar todas as etapas
   const box = document.getElementById("box-prosp");
   const cvs = document.getElementById("chart-prospeccao");
   drawProspeccao(cvs, OUTBOUND_STEPS, counts);
-  // deixa a altura do box igual à altura do canvas renderizado
   box.style.height = cvs.height + "px";
 }
 
-function renderCanais(leads, allChannels){
+function renderCanais(leads){
   const ganhos = leads.filter(l => norm(l.etapa).includes("ganho"));
-  const labels = allChannels.length ? allChannels : Array.from(new Set(leads.map(l=>l.canal||"—")));
+  const labels = ALL_CHANNELS.length ? ALL_CHANNELS : Array.from(new Set(leads.map(l=>l.canal || "—")));
   const byCanal = Object.fromEntries(labels.map(k => [k, ganhos.filter(g => (g.canal||"—")===k)]));
   const qtd = labels.map(k => byCanal[k].length);
   const val = labels.map(k => byCanal[k].reduce((s,l)=>s+l.valor,0));
@@ -505,18 +622,16 @@ function renderCanais(leads, allChannels){
         { label:"Valor ganho (R$ mil)", data:val.map(v=>v/1000), backgroundColor:"rgba(148,163,184,.95)", borderRadius:8, barPercentage:0.6, categoryPercentage:0.7 }
       ]},
     options:{
-      ...baseOpts, indexAxis:"y", scales:{
-        x:{ grid:{display:false}, ticks:{color: "#8993a8"} },
-        y:{ grid:{display:false}, ticks:{color: "#8993a8"} }
-      },
+      responsive:true, maintainAspectRatio:false, animation:false, indexAxis:"y",
+      scales:{ x:{ grid:{display:false}, ticks:{color:"#8993a8"} }, y:{ grid:{display:false}, ticks:{color:"#8993a8"} } },
       plugins:{ legend:{display:true, labels:{color:"#aeb6c5"}} }
     }
   });
 }
 
-function renderUsuarios(leads, allUsers){
+function renderUsuarios(leads){
   const ganhos = leads.filter(l => norm(l.etapa).includes("ganho"));
-  const labels = allUsers.length ? allUsers : Array.from(new Set(leads.map(l=>l.vendedor||"—")));
+  const labels = ALL_USERS.length ? ALL_USERS : Array.from(new Set(leads.map(l=>l.vendedor||"—")));
   const byUser = Object.fromEntries(labels.map(k => [k, ganhos.filter(g => (g.vendedor||"—")===k)]));
   const qtd = labels.map(k => byUser[k].length);
   const val = labels.map(k => byUser[k].reduce((s,l)=>s+l.valor,0));
@@ -531,57 +646,57 @@ function renderUsuarios(leads, allUsers){
         { label:"Valor ganho (R$ mil)", data:val.map(v=>v/1000), backgroundColor:"rgba(148,163,184,.95)", borderRadius:8, barPercentage:0.6, categoryPercentage:0.7 }
       ]},
     options:{
-      ...baseOpts, indexAxis:"y", scales:{
-        x:{ grid:{display:false}, ticks:{color: "#8993a8"} },
-        y:{ grid:{display:false}, ticks:{color: "#8993a8"} }
-      },
+      responsive:true, maintainAspectRatio:false, animation:false, indexAxis:"y",
+      scales:{ x:{ grid:{display:false}, ticks:{color:"#8993a8"} }, y:{ grid:{display:false}, ticks:{color:"#8993a8"} } },
       plugins:{ legend:{display:true, labels:{color:"#aeb6c5"}} }
     }
   });
 }
 
 function renderChamadasLinha(calls, range){
-  // agrega por dia
+  // agrega por dia (só números >=0) e mostra apenas o DIA (1..31)
   const map = new Map();
   for (let d = new Date(range.start); d <= range.end; d = new Date(d.getTime()+86400000)){
-    const k = d.toISOString().slice(0,10);
-    map.set(k, 0);
+    const iso = d.toISOString().slice(0,10);
+    map.set(iso, 0);
   }
   calls.forEach(c => {
-    const k = new Date(c.created_at).toISOString().slice(0,10);
-    if (map.has(k)) map.set(k, map.get(k)+1);
+    const iso = new Date(c.created_at).toISOString().slice(0,10);
+    if (map.has(iso)) map.set(iso, Math.max(0, map.get(iso) + 1));
   });
-  const labels = Array.from(map.keys()).sort();
-  const data = labels.map(k => map.get(k));
+  const labelsISO = Array.from(map.keys()).sort();
+  const data = labelsISO.map(k => map.get(k));
+  const dayLabels = labelsISO.map(iso => String(Number(iso.slice(8,10))));
 
   destroy("chart-chamadas");
   CHARTS["chart-chamadas"] = new Chart(document.getElementById("chart-chamadas"), {
     type:"line",
-    data:{ labels, datasets:[{ data, borderColor:"rgba(226,232,240,.9)", tension:.35, fill:false, pointRadius:2 }] },
-    options:{ ...baseOpts }
+    data:{ labels: dayLabels, datasets:[{ data, borderColor:"rgba(226,232,240,.9)", tension:.35, fill:false, pointRadius:2 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{color:"#222735"}, ticks:{color:"#8993a8"} },
+        y:{ grid:{color:"#222735"}, ticks:{color:"#8993a8"}, beginAtZero:true, suggestedMin:0 }
+      }
+    }
   });
 }
 
 /* =======================
    BOOT
    ======================= */
-let ALL_LEADS = [];
-let ALL_CALLS = [];
-let ALL_USERS = [];   // nomes
-let ALL_CHANNELS = []; // canais distintos
-
 async function boot(){
   ALL_LEADS = await loadLeads();
   ALL_CALLS = await loadCalls();
-  // popula filtros “Usuário” e “Funil”
-  await hydrateFilters(ALL_LEADS);
+  await hydrateFilters();
 
-  // conjuntos completos (para listar opções zeradas nos gráficos)
+  // popula conjuntos completos p/ manter itens zerados nos gráficos
   const usersList = await loadList("users");
   ALL_USERS = (usersList.dados||[]).map(r => r[1]).filter(Boolean);
   ALL_CHANNELS = Array.from(new Set(ALL_LEADS.map(l => l.canal || "—")));
 
-  applyAll(); // default: Última semana (completa), Usuário: todos, Funil: todos
+  applyAll(); // padrão: última semana completa anterior
 }
 
 async function applyAll(){
@@ -590,16 +705,16 @@ async function applyAll(){
   const usuario= fUsuario.value || "";
   const funil  = fFunil.value   || "";
 
+  // atualiza label do período com resumo dentro do select
+  setPeriodSummaryLabel(choice, range);
+
   const {leads, calls} = filtrar(ALL_LEADS, ALL_CALLS, range, usuario, funil);
 
-  // cards
   renderCards(calcularCards(leads));
-
-  // gráficos
   renderProspeccaoAtiva(leads);
-  renderCanais(leads, ALL_CHANNELS);
+  renderCanais(leads);
   renderChamadasLinha(calls, range);
-  renderUsuarios(leads, ALL_USERS);
+  renderUsuarios(leads);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
