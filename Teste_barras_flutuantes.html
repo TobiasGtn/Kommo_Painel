@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Meio Funil – efeito flutuando (MVP)</title>
+<style>
+  /* ==========================================================
+     VARIÁVEIS GLOBAIS (ajuste aqui para "entender" o layout)
+     ----------------------------------------------------------
+     --bar-h .......... altura das barras
+     --bevel .......... largura da ponta chanfrada (em px)
+     --gap ............ distância vertical entre as barras
+     --radius ......... arredondamento do lado esquerdo
+     --lift ........... “elevação” visual (distância da sombra)
+     --blur ........... desfoque da sombra (realismo do flutuar)
+     --peek ........... quanto a barra preta “aparece” além da azul
+     --blue ........... cor principal (barra flutuante)
+     --blue-edge ...... filete claro na aresta chanfrada (realça 3D)
+     --back ........... cor da barra de base (preta)
+     --surface ........ cor do fundo (painel)
+     --ink/muted ...... cores de texto
+     ========================================================== */
+  :root{
+    --bar-h: 44px;
+    --bevel: 26px;
+    --gap: 18px;
+    --radius: 14px;
+    --lift: 12px;
+    --blur: 18px;
+    --peek: 16px;
+
+    --blue: #7fb0d4;
+    --blue-edge: #b9d1e3;
+    --back: #0f1219;
+    --surface: #0b0e14;
+    --ink: #e8eaee;
+    --muted: #9aa3b2;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; color:var(--ink); background:
+      radial-gradient(1100px 900px at 20% -10%, #151b27 0%, transparent 60%),
+      radial-gradient(900px 700px at 120% 0%, #0e1424 0%, transparent 60%),
+      var(--surface);
+    font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif;
+  }
+  .wrap{max-width:980px;margin:40px auto;padding:0 20px}
+
+  h1{font-size:20px;margin:0 0 16px 0}
+  p.hint{margin:6px 0 18px;color:var(--muted)}
+
+  /* Container do “meio funil” */
+  .panel{
+    padding:20px 22px;
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:16px;
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+    box-shadow: 0 20px 40px rgba(0,0,0,.35), 0 2px 10px rgba(0,0,0,.25);
+  }
+
+  /* Lista de linhas (azul, preto, azul, preto...) */
+  .funnel{
+    display:flex;
+    flex-direction:column;
+    gap: var(--gap);
+  }
+
+  /* Linha básica – o “corpo” retangular arredondado à esquerda */
+  .bar{
+    position:relative;
+    height: var(--bar-h);
+    width: calc(var(--w, 80) * 1%); /* defina --w (0..100) no atributo style de cada barra */
+    border-radius: var(--radius);
+    overflow: visible;                 /* deixa o bico aparecer fora do retângulo */
+  }
+
+  /* PONTA CHANFRADA: triângulo acoplado, com a mesma cor que o corpo */
+  .bar::after{
+    content:"";
+    position:absolute;
+    top:0;
+    right: calc(-1 * var(--bevel));
+    width: var(--bevel);
+    height: 100%;
+    background: inherit;
+    /* O triângulo que forma o chanfrado */
+    -webkit-clip-path: polygon(0 0, 100% 50%, 0 100%);
+            clip-path: polygon(0 0, 100% 50%, 0 100%);
+    border-top-right-radius: 10px;    /* leve arredondado na ponta */
+    border-bottom-right-radius: 10px;
+  }
+
+  /* Filete claro na aresta para reforçar o volume */
+  .bar::before{
+    content:"";
+    position:absolute;
+    top:1px;
+    right: calc(-1 * var(--bevel));
+    width: var(--bevel);
+    height: calc(100% - 2px);
+    pointer-events:none;
+    -webkit-clip-path: polygon(0 0, 100% 50%, 0 100%);
+            clip-path: polygon(0 0, 100% 50%, 0 100%);
+    background: linear-gradient(180deg, transparent 25%, var(--blue-edge) 50%, transparent 75%);
+    opacity:.35;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+
+  /* BARRA AZUL (flutuando) */
+  .bar--blue{
+    background: linear-gradient(180deg, #9dc5e0, var(--blue));
+    /* Sombra com contorno real (respeita o chanfrado). Troque por url(#soft-elevation) se quiser usar o filtro SVG. */
+    filter: drop-shadow(0 var(--lift) var(--blur) rgba(0,0,0,.45));
+  }
+
+  /* BARRA PRETA (base por baixo e entre as azuis) */
+  .bar--base{
+    background: linear-gradient(180deg, #0d1118, #0a0d12);
+    /* leve brilho superior para lembrar plástico/painel */
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.05),
+      inset 0 -2px 0 rgba(0,0,0,.35);
+  }
+
+  /* Pequeno “avanço” da barra preta além da azul (efeito peeking) */
+  .bar--base .tail{
+    position:absolute;
+    right: calc(-1 * var(--peek));
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--peek);
+    height: 2px;
+    background: linear-gradient(90deg, rgba(255,255,255,.2), rgba(255,255,255,0));
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  /* Layout das linhas com rótulos (placeholder por enquanto) */
+  .row{
+    display:grid;
+    grid-template-columns: 180px 1fr;
+    align-items:center;
+    gap: 16px;
+  }
+  .label{color:var(--muted); font-size:14px; white-space:nowrap}
+
+  /* Apenas para deixar tudo bonito em telas menores */
+  @media (max-width:640px){
+    .row{ grid-template-columns: 120px 1fr; }
+  }
+</style>
+
+<!--
+  Filtros SVG (opcional). Descomente a linha indicada na .bar--blue
+  e use: filter: url(#soft-elevation);
+-->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="soft-elevation" x="-30%" y="-50%" width="160%" height="220%" color-interpolation-filters="sRGB">
+      <!-- cria uma sombra suave que respeita o contorno da forma -->
+      <feOffset dx="0" dy="12" result="off"/>
+      <feGaussianBlur in="off" stdDeviation="8" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 .45 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
+</head>
+<body>
+<div class="wrap">
+  <h1>Meio funil com “flutuação”</h1>
+  <p class="hint">Ajuste os <strong>valores de <code>--w</code></strong> (0–100) em cada barra para controlar o comprimento.
+    Mexa também em <code>:root</code> (altura, chanfrado, sombras, cores).</p>
+
+  <div class="panel">
+    <div class="funnel">
+
+      <!-- 1) Azul -->
+      <div class="row">
+        <div class="label">Impressões</div>
+        <!-- --w = porcentagem da largura da barra -->
+        <div class="bar bar--blue" style="--w: 95;"></div>
+      </div>
+
+      <!-- 2) Preta (base sob a próxima azul) -->
+      <div class="row">
+        <div class="label"></div>
+        <!-- a base pode ser um pouco maior (dá a sensação de “plataforma”) -->
+        <div class="bar bar--base" style="--w: 88;">
+          <span class="tail" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- 3) Azul -->
+      <div class="row">
+        <div class="label">Cliques</div>
+        <div class="bar bar--blue" style="--w: 70;"></div>
+      </div>
+
+      <!-- 4) Preta -->
+      <div class="row">
+        <div class="label"></div>
+        <div class="bar bar--base" style="--w: 62;">
+          <span class="tail" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- 5) Azul -->
+      <div class="row">
+        <div class="label">Page Views</div>
+        <div class="bar bar--blue" style="--w: 46;"></div>
+      </div>
+
+      <!-- 6) Preta -->
+      <div class="row">
+        <div class="label"></div>
+        <div class="bar bar--base" style="--w: 40;">
+          <span class="tail" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- 7) Azul -->
+      <div class="row">
+        <div class="label">Leads</div>
+        <div class="bar bar--blue" style="--w: 28;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="hint" style="margin-top:14px">
+    Quer suavizar ainda mais? No CSS da <code>.bar--blue</code> troque o
+    <code>filter: drop-shadow(...)</code> por <code>filter: url(#soft-elevation)</code>.
+  </p>
+</div>
+</body>
+</html>
