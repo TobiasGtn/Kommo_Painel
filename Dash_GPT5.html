@@ -29,6 +29,8 @@
   h1{font-size:18px;margin:0}
   .muted{color:var(--muted)}
   .surface{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .actions{display:flex;align-items:center;gap:10px}
+  .link-btn{border:1px solid var(--line);background:#0f141e;color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
 
   /* filtros */
   .filters{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0 12px}
@@ -82,8 +84,11 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><div class="dot"></div><h1>Dashboard Grazziotin Consultoria — <span class="muted">Kommo CRM</span></h1></div>
-    <div class="muted">Máx. 90 dias</div>
+    <div class="brand"><div class="dot"></div><h1>Dashboard Grazziotin — <span class="muted">MVP Kommo</span></h1></div>
+    <div class="actions">
+      <button id="btn-refresh" class="link-btn" title="Forçar atualização agora">Atualizar agora</button>
+      <div class="muted">Máx. 90 dias</div>
+    </div>
   </header>
 
   <!-- FILTROS -->
@@ -218,38 +223,63 @@ async function fetchJSON(url){
 const toBRL = n => (Number(n)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const norm  = v => String(v ?? "").toLowerCase().trim();
 const tagsToArray = csv => (csv||"").split(",").map(s=>s.trim()).filter(Boolean);
-const groupBy = (arr, fn) => arr.reduce((m,x)=>((m[fn(x)]=m[fn(x)]||[]).push(x),m),{});
 const ddmm = d => String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
+function qs(name){ const m = new URLSearchParams(location.search).get(name); return m; }
 
 /* =======================
    CARGA (sempre 90 dias)
    ======================= */
-async function loadLeads(){
-  const json = await fetchJSON(`${GAS_ENDPOINT_URL}?periodo=90`);
-  const rows = json.dados || [];
-  return rows.map(r => ({
-    id:r[0], created_at:r[1], vendedor:r[2]||"—",
-    valor:Number(r[3])||0, etapa:r[4]||"", tags:r[5]||"",
-    source:String(r[6]??""), pipeline:String(r[7]??""), canal:String(r[8]??""),
-    closed_at:r[9]||""
-  }));
+async function fetchAllFromServer(){
+  const [leadsResp, callsResp, usersResp, pipesResp] = await Promise.all([
+    fetchJSON(`${GAS_ENDPOINT_URL}?periodo=90`),
+    fetchJSON(`${GAS_ENDPOINT_URL}?list=calls`),
+    fetchJSON(`${GAS_ENDPOINT_URL}?list=users`),
+    fetchJSON(`${GAS_ENDPOINT_URL}?list=pipelines`)
+  ]);
+  return {
+    leads: (leadsResp.dados||[]).map(r => ({
+      id:r[0], created_at:r[1], vendedor:r[2]||"—",
+      valor:Number(r[3])||0, etapa:r[4]||"", tags:r[5]||"",
+      source:String(r[6]??""), pipeline:String(r[7]??""), canal:String(r[8]??""),
+      closed_at:r[9]||""
+    })),
+    calls: (callsResp.dados||[]).map(r => ({
+      note_id:r[0], created_at:r[1], created_by:r[2], type:r[3],
+      duration:Number(r[4]||0), phone:r[5]||"", link:r[6]||"", lead_id:r[7]||""
+    })),
+    users: (usersResp.dados||[]).map(r => r[1]).filter(Boolean),
+    pipelines: Array.from(new Set((pipesResp.dados||[]).map(r => r[1]).filter(Boolean)))
+  };
 }
-async function loadList(kind){ return fetchJSON(`${GAS_ENDPOINT_URL}?list=${encodeURIComponent(kind)}`); }
-async function loadCalls(){
-  const json = await loadList("calls");
-  const rows = json.dados || [];
-  return rows.map(r => ({
-    note_id:r[0], created_at:r[1], created_by:r[2], type:r[3],
-    duration:Number(r[4]||0), phone:r[5]||"", link:r[6]||"", lead_id:r[7]||""
-  }));
+
+/* =======================
+   CACHE DIÁRIO (04:30)
+   ======================= */
+const CACHE_KEY = "grazziotin_cache_v1";
+function getCache(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||""); }catch(e){ return null; } }
+function setCache(obj){ localStorage.setItem(CACHE_KEY, JSON.stringify(obj)); }
+function todayGate0430(){
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 4, 30, 0, 0); // 04:30 local
+}
+function shouldFetchNow(force=false){
+  if (force) return true;
+  const cache = getCache();
+  const now = new Date();
+  const gate = todayGate0430();
+  // se ainda não passou das 04:30, nunca atualiza
+  if (now < gate) return false;
+  // se não tem cache, busca
+  if (!cache || !cache.ts) return true;
+  const ts = new Date(cache.ts);
+  // se o cache é antes do gate de HOJE, busca
+  return ts < gate;
 }
 
 /* =======================
    ESTADO GLOBAL
    ======================= */
-let ALL_LEADS = [];
-let ALL_CALLS = [];
-let ALL_USERS = [];    // nomes (para exibir zerados)
+let ALL = { leads:[], calls:[], users:[], pipelines:[] };
 let ALL_CHANNELS = []; // canais (para exibir zerados)
 
 /* =======================
@@ -259,22 +289,19 @@ const fPeriodo = document.getElementById("f-periodo");
 const fUsuario = document.getElementById("f-usuario");
 const fFunil   = document.getElementById("f-funil");
 const btnCal   = document.getElementById("btn-cal");
+const btnRefresh = document.getElementById("btn-refresh");
+
+const PERIOD_LABELS = {
+  "hoje":"Hoje", "ontem":"Ontem", "ultima-semana":"Última semana",
+  "ultimo-mes":"Último mês", "max":"Máximo", "custom":"Personalizado"
+};
 
 let customRange = null; // {start, end}
 
-const PERIOD_LABELS = {
-  "hoje":"Hoje",
-  "ontem":"Ontem",
-  "ultima-semana":"Última semana",
-  "ultimo-mes":"Último mês",
-  "max":"Máximo",
-  "custom":"Personalizado"
-};
-
 function computeMaxRange(){
   const dates = [];
-  ALL_LEADS.forEach(l => { if (l.created_at) dates.push(new Date(l.created_at).getTime()); if (l.closed_at) dates.push(new Date(l.closed_at).getTime()); });
-  ALL_CALLS.forEach(c => { if (c.created_at) dates.push(new Date(c.created_at).getTime()); });
+  ALL.leads.forEach(l => { if (l.created_at) dates.push(new Date(l.created_at).getTime()); if (l.closed_at) dates.push(new Date(l.closed_at).getTime()); });
+  ALL.calls.forEach(c => { if (c.created_at) dates.push(new Date(c.created_at).getTime()); });
   if (!dates.length){
     const today = new Date(); today.setHours(0,0,0,0);
     return { start: today, end: new Date(today.getTime()+86399999) };
@@ -315,9 +342,7 @@ function getRange(choice){
 }
 
 function setPeriodSummaryLabel(choice, range){
-  // atualiza o texto da opção selecionada para incluir "dd/mm a dd/mm"
-  const startTxt = ddmm(range.start);
-  const endTxt   = ddmm(range.end);
+  const startTxt = ddmm(range.start), endTxt = ddmm(range.end);
   const opts = Array.from(fPeriodo.options);
   opts.forEach(opt => {
     const base = PERIOD_LABELS[opt.value] || opt.textContent;
@@ -327,21 +352,6 @@ function setPeriodSummaryLabel(choice, range){
       opt.textContent = base;
     }
   });
-}
-
-async function hydrateFilters(){
-  const users = await loadList("users");
-  const uRows = users.dados || [];
-  fUsuario.innerHTML = `<option value="">Todos</option>` +
-    uRows.map(r => `<option value="${String(r[1]).replace(/"/g,'&quot;')}">${r[1]}</option>`).join("");
-
-  const pipes = await loadList("pipelines");
-  const pRows = pipes.dados || [];
-  const names = Array.from(new Set(pRows.map(r => r[1]).filter(Boolean)));
-  fFunil.innerHTML = `<option value="">Todos</option>` +
-    names.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}">${n}</option>`).join("");
-
-  fPeriodo.value = "ultima-semana"; // padrão
 }
 
 /* =======================
@@ -385,7 +395,7 @@ function renderCalendar(){
   const y = calState.cursor.getFullYear();
   const m = calState.cursor.getMonth();
   calMonthEl.textContent = calState.cursor.toLocaleDateString("pt-BR",{month:"long", year:"numeric"});
-  // remove dias anteriores (mantém os DOW)
+  // remove dias (mantém DOW)
   [...calGrid.querySelectorAll(".day")].forEach(n=>n.remove());
 
   const firstDay = new Date(y, m, 1);
@@ -493,7 +503,7 @@ const valueLabels = {
 };
 
 /* =======================
-   PROSPECÇÃO ATIVA (canvas) — números após as barras
+   PROSPECÇÃO ATIVA (canvas) — números por cima da barra
    ======================= */
 const OUTBOUND_STEPS = [
   "Prospects","Contato estabelecido","Contato decisor","Qualificado",
@@ -559,12 +569,11 @@ function drawProspeccao(canvas, steps, counts){
     ctx.lineTo(x + bw - tip, y + h);
     ctx.stroke();
 
-    // número alinhado à esquerda da barra (DESENHADO DEPOIS DA BARRA)
-    ctx.fillStyle = "#0f1115";            // contrasta com a barra clara
+    // número por cima (depois da barra)
+    ctx.fillStyle = "#0f1115";
     ctx.font = "700 16px system-ui";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    // leve contorno para legibilidade
     ctx.strokeStyle = "rgba(255,255,255,.35)";
     ctx.lineWidth = 2;
     ctx.strokeText(String(cnt), x + 10, y + h/2);
@@ -631,7 +640,7 @@ function renderCanais(leads){
 
 function renderUsuarios(leads){
   const ganhos = leads.filter(l => norm(l.etapa).includes("ganho"));
-  const labels = ALL_USERS.length ? ALL_USERS : Array.from(new Set(leads.map(l=>l.vendedor||"—")));
+  const labels = ALL.users.length ? ALL.users : Array.from(new Set(leads.map(l=>l.vendedor||"—")));
   const byUser = Object.fromEntries(labels.map(k => [k, ganhos.filter(g => (g.vendedor||"—")===k)]));
   const qtd = labels.map(k => byUser[k].length);
   const val = labels.map(k => byUser[k].reduce((s,l)=>s+l.valor,0));
@@ -654,7 +663,7 @@ function renderUsuarios(leads){
 }
 
 function renderChamadasLinha(calls, range){
-  // agrega por dia (só números >=0) e mostra apenas o DIA (1..31)
+  // agrega por dia (>=0) e rótulo apenas DIA (1..31)
   const map = new Map();
   for (let d = new Date(range.start); d <= range.end; d = new Date(d.getTime()+86400000)){
     const iso = d.toISOString().slice(0,10);
@@ -684,19 +693,27 @@ function renderChamadasLinha(calls, range){
 }
 
 /* =======================
-   BOOT
+   BOOT + APLICAÇÃO
    ======================= */
-async function boot(){
-  ALL_LEADS = await loadLeads();
-  ALL_CALLS = await loadCalls();
-  await hydrateFilters();
+async function hydrateFilters(){
+  // Preenche Usuários e Funis com base nos dados carregados (ALL)
+  fUsuario.innerHTML = `<option value="">Todos</option>` +
+    ALL.users.map(u => `<option value="${String(u).replace(/"/g,'&quot;')}">${u}</option>`).join("");
 
-  // popula conjuntos completos p/ manter itens zerados nos gráficos
-  const usersList = await loadList("users");
-  ALL_USERS = (usersList.dados||[]).map(r => r[1]).filter(Boolean);
-  ALL_CHANNELS = Array.from(new Set(ALL_LEADS.map(l => l.canal || "—")));
+  const names = ALL.pipelines;
+  fFunil.innerHTML = `<option value="">Todos</option>` +
+    names.map(n => `<option value="${String(n).replace(/"/g,'&quot;')}">${n}</option>`).join("");
 
-  applyAll(); // padrão: última semana completa anterior
+  fPeriodo.value = "ultima-semana"; // padrão
+}
+
+function setChannelsFromLeads(){
+  ALL_CHANNELS = Array.from(new Set(ALL.leads.map(l => l.canal || "—")));
+}
+
+function setPeriodSummary(choice){
+  const range = getRange(choice);
+  setPeriodSummaryLabel(choice, range);
 }
 
 async function applyAll(){
@@ -705,10 +722,17 @@ async function applyAll(){
   const usuario= fUsuario.value || "";
   const funil  = fFunil.value   || "";
 
-  // atualiza label do período com resumo dentro do select
   setPeriodSummaryLabel(choice, range);
 
-  const {leads, calls} = filtrar(ALL_LEADS, ALL_CALLS, range, usuario, funil);
+  const leads = ALL.leads.filter(l => {
+    return inRange(l.created_at, range) &&
+      (!usuario || l.vendedor === usuario) &&
+      (!funil || l.pipeline === funil);
+  });
+  const calls = ALL.calls.filter(c => {
+    return inRange(c.created_at, range) &&
+      (!usuario || c.created_by === usuario);
+  });
 
   renderCards(calcularCards(leads));
   renderProspeccaoAtiva(leads);
@@ -717,9 +741,41 @@ async function applyAll(){
   renderUsuarios(leads);
 }
 
+async function boot(){
+  const force = qs("refresh")==="1"; // ?refresh=1
+  let needFetch = shouldFetchNow(force);
+  const cache = getCache();
+
+  if (!needFetch && cache && cache.data){
+    // usa cache e renderiza imediato
+    ALL = cache.data;
+  } else {
+    // busca do servidor e salva cache com TS
+    const data = await fetchAllFromServer();
+    ALL = data;
+    setCache({ ts: new Date().toISOString(), data });
+  }
+
+  setChannelsFromLeads();
+  await hydrateFilters();
+  setPeriodSummary(fPeriodo.value);
+  applyAll();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  boot().catch(e => { alert("Falha ao carregar: "+e.message); console.error(e); });
+  // botão para forçar atualização manual
+  btnRefresh.addEventListener("click", async ()=>{
+    const data = await fetchAllFromServer();
+    ALL = data;
+    setCache({ ts: new Date().toISOString(), data });
+    setChannelsFromLeads();
+    await hydrateFilters();
+    applyAll();
+  });
+
   [fPeriodo, fUsuario, fFunil].forEach(el => el.addEventListener("change", applyAll));
+
+  boot().catch(e => { alert("Falha ao carregar: "+e.message); console.error(e); });
 });
 </script>
 </body>
